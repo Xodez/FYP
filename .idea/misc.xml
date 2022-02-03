@@ -4,6 +4,9 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/activity_main.xml" value="0.55" />
+        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_inventory.xml" value="0.5359375" />
+        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_recipe.xml" value="0.55" />
+        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_shopping_list.xml" value="0.55" />
       </map>
     </option>
   </component>
