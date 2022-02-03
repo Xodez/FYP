@@ -18,8 +18,8 @@ import java.util.ArrayList;
 
 public class RecipeFragment extends Fragment {
 
-    private ArrayList<String> nNames = new ArrayList<>();
-    private ArrayList<Integer> nImages = new ArrayList<>();
+    private ArrayList<Integer> nImages;
+    private ArrayList<String> nNames;
     private Context mContext;
 
     @Override
@@ -32,13 +32,18 @@ public class RecipeFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         getImages();
     }
 
     private void getImages(){
-        nImages.add(R.drawable.burgerjpg);
+        nImages = new ArrayList<>();
+        nNames = new ArrayList<>();
+        nImages.add(R.drawable.burger);
         nNames.add("Burger");
+        nImages.add(R.drawable.spaghetti);
+        nNames.add("spaghetti");
+        nImages.add(R.drawable.lasagne);
+        nNames.add("lasagne");
 
         initRecyclerView();
     }
