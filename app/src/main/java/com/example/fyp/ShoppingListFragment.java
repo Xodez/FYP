@@ -10,20 +10,19 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 import java.util.ArrayList;
-import java.util.Dictionary;
-import java.util.Hashtable;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
     ArrayList<String> items;
     ArrayList<Integer> count;
     RecyclerView recyclerView;
+    RecyclerViewAdapterShoppingList adapter;
+    LinearLayoutManager layoutManager;
 
     EditText input;
     ImageView enter;
@@ -41,6 +40,21 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         createItems();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
+
+        enter.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String text = input.getText().toString();
+                if(text.length() == 0){
+                    makeToast("Enter an item");
+                }
+                else{
+                    addItem(text);
+                    input.setText("");
+                    makeToast("Added: " + text);
+                }
+            }
+        });
     }
 
     private void createItems(){
@@ -67,17 +81,29 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
 
     private void initRecyclerView(){
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
+        layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = getView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
-        RecyclerViewAdapterShoppingList adapter = new RecyclerViewAdapterShoppingList(items, count, this);
+        adapter = new RecyclerViewAdapterShoppingList(items, count, this);
         recyclerView.setAdapter(adapter);
     }
 
     @Override
     public void onShoppingItemCLick(int position) {
         count.set(position, (count.get(position) + 1));
-        initRecyclerView();
+        recyclerView.setAdapter(adapter);
+    }
+
+    public void addItem(String item){
+        if (items.contains(item)){
+            makeToast("Item already in list");
+        }
+        else{
+            items.add(item);
+            count.add(1);
+            recyclerView.setAdapter(adapter);
+        }
+
     }
 
     Toast t;
