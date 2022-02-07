@@ -12,7 +12,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.HorizontalScrollView;
+
+import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
 
 import java.util.ArrayList;
 
@@ -52,7 +53,7 @@ public class RecipeFragment extends Fragment {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.HORIZONTAL, false);
         RecyclerView recyclerView = getView().findViewById(R.id.horizontalView);
         recyclerView.setLayoutManager(layoutManager);
-        RecyclerViewAdapter adapter = new RecyclerViewAdapter(nNames, nImages, this.getContext());
+        RecyclerViewAdapterRecipes adapter = new RecyclerViewAdapterRecipes(nNames, nImages, this.getContext());
         recyclerView.setAdapter(adapter);
     }
 }

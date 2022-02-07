@@ -1,4 +1,4 @@
-package com.example.fyp;
+package com.example.fyp.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;

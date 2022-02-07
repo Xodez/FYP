@@ -1,4 +1,4 @@
-package com.example.fyp;
+package com.example.fyp.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -11,16 +11,17 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.fyp.R;
 
 import java.util.ArrayList;
 
-public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
+public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerViewAdapterRecipes.ViewHolder> {
 
     private ArrayList<String> nNames = new ArrayList<>();
     private ArrayList<Integer> nImages = new ArrayList<>();
     private Context mContext;
 
-    public RecyclerViewAdapter(ArrayList<String> nNames, ArrayList<Integer> nImages, Context mContext) {
+    public RecyclerViewAdapterRecipes(ArrayList<String> nNames, ArrayList<Integer> nImages, Context mContext) {
         this.nNames = nNames;
         this.nImages = nImages;
         this.mContext = mContext;
