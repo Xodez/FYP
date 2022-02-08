@@ -3,36 +3,41 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ShoppingListFragment">
+    tools:context=".ShoppingListFragment"
+    android:layout_marginStart="0dp"
+    android:layout_marginEnd="0dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        >
 
         <RelativeLayout
             android:id="@+id/header"
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:background="#F1FEFF"
-            >
+            android:layout_alignParentTop="true"
+            android:background="#F1FEFF">
 
             <EditText
+                android:id="@+id/input"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:ems="10"
-                android:hint="Enter item here"
                 android:layout_centerInParent="true"
-                android:id="@+id/input">
+                android:ems="10"
+                android:hint="Enter item here">
+
             </EditText>
 
             <ImageView
+                android:id="@+id/add"
                 android:layout_width="40sp"
                 android:layout_height="40sp"
-                android:layout_toEndOf="@+id/input"
-                android:layout_marginStart="7sp"
                 android:layout_centerVertical="true"
-                android:src="@drawable/add_item"
-                android:id="@+id/add">
+                android:layout_marginStart="7sp"
+                android:layout_toEndOf="@+id/input"
+                android:src="@drawable/add_item">
+
             </ImageView>
         </RelativeLayout>
 
@@ -41,6 +46,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_below="@+id/header"
+            android:layout_alignParentBottom="true"
             android:orientation="vertical" />
 
     </RelativeLayout>

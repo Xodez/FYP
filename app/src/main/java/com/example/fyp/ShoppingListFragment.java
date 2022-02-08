@@ -26,6 +26,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     EditText input;
     ImageView enter;
+    ImageView remove;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -40,6 +41,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         createItems();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
+        remove = view.findViewById(R.id.remove);
 
         enter.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -89,9 +91,14 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     @Override
-    public void onShoppingItemCLick(int position) {
+    public void onShoppingItemClick(int position) {
         count.set(position, (count.get(position) + 1));
         recyclerView.setAdapter(adapter);
+    }
+
+    @Override
+    public void onRemoveButtonClick(int position) {
+        removeItem(position);
     }
 
     public void addItem(String item){
@@ -103,7 +110,18 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
             count.add(1);
             recyclerView.setAdapter(adapter);
         }
+    }
 
+    public void removeItem(int remove){
+        if (count.get(remove) > 1){
+            count.set(remove, (count.get(remove) - 1));
+            recyclerView.setAdapter(adapter);
+        }
+        else{
+            items.remove(remove);
+            count.remove(remove);
+            recyclerView.setAdapter(adapter);
+        }
     }
 
     Toast t;

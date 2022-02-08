@@ -3,11 +3,14 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
-        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/activity_main.xml" value="0.55" />
+        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/activity_main.xml" value="0.33" />
         <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_inventory.xml" value="0.5359375" />
         <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_recipe.xml" value="0.55" />
         <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/fragment_shopping_list.xml" value="0.55" />
         <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/layout_recipeitem.xml" value="0.55" />
+        <entry key="..\:/Users/kaspa/AndroidStudioProjects/FYP/app/src/main/res/layout/layout_shoppinglistitem.xml" value="0.328125" />
+        <entry key="..\:/Users/kaspa/AppData/Local/Android/Sdk/platforms/android-32/data/res/layout/simple_list_item_1.xml" value="0.55" />
+        <entry key="..\:/Users/kaspa/AppData/Local/Android/Sdk/platforms/android-32/data/res/layout/simple_list_item_2.xml" value="0.328125" />
       </map>
     </option>
   </component>
