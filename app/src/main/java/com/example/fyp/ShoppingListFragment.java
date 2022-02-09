@@ -13,16 +13,20 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.example.fyp.Database.RoomDB;
+import com.example.fyp.Models.Ingredient;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 import java.util.ArrayList;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
-    ArrayList<String> items;
+    ArrayList<Ingredient> ingredients = new ArrayList<>();
     ArrayList<Integer> count;
     RecyclerView recyclerView;
     RecyclerViewAdapterShoppingList adapter;
     LinearLayoutManager layoutManager;
+    RoomDB database;
 
     EditText input;
     ImageView enter;
@@ -38,6 +42,10 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        database = RoomDB.getInstance(this.getContext());
+        ingredients = database.mainDao().getAll();
+
         createItems();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
@@ -60,14 +68,8 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     private void createItems(){
-        items = new ArrayList<>();
-        items.add("Apple");
-        items.add("Fish");
-        items.add("Salami");
-        items.add("Peanuts");
-        items.add("Chicken");
-        items.add("Steak");
-        items.add("Orange");
+
+
 
         count = new ArrayList<>();
         count.add(1);
@@ -86,7 +88,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = getView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
-        adapter = new RecyclerViewAdapterShoppingList(items, count, this);
+        adapter = new RecyclerViewAdapterShoppingList(ingredients, count, this);
         recyclerView.setAdapter(adapter);
     }
 
@@ -102,7 +104,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     public void addItem(String item){
-        if (items.contains(item)){
+        if (ingredients.contains(item)){
             makeToast("Item already in list");
         }
         else{

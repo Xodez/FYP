@@ -9,18 +9,20 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.fyp.Models.Ingredient;
 import com.example.fyp.R;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<RecyclerViewAdapterShoppingList.ViewHolder> {
 
-    private ArrayList<String> nNames = new ArrayList<>();
-    private ArrayList<Integer> nCount = new ArrayList<>();
+    ArrayList<Ingredient> list = new ArrayList<>();
+    ArrayList<Integer> nCount = new ArrayList<>();
     OnShoppingItemListener onShoppingItemListener;
 
-    public RecyclerViewAdapterShoppingList(ArrayList<String> nNames, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
-        this.nNames = nNames;
+    public RecyclerViewAdapterShoppingList(ArrayList<Ingredient> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
+        this.list = list;
         this.nCount = nCount;
         this.onShoppingItemListener = onShoppingItemListener;
     }
@@ -35,7 +37,7 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
     @Override
     public void onBindViewHolder(@NonNull RecyclerViewAdapterShoppingList.ViewHolder holder, int position) {
         holder.count.setText(String.valueOf(nCount.get(position)));
-        holder.name.setText(nNames.get(position));
+        holder.name.setText(list.get(position).getName());
         holder.remove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -46,7 +48,7 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
 
     @Override
     public int getItemCount() {
-        return nNames.size();
+        return list.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
