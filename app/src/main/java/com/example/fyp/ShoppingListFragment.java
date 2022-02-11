@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,11 +18,13 @@ import android.widget.Toast;
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.Ingredient;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
+
 import java.util.ArrayList;
+import java.util.List;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
-    ArrayList<Ingredient> ingredients = new ArrayList<>();
+    List<Ingredient> ingredients = new ArrayList<>();
     ArrayList<Integer> count;
     RecyclerView recyclerView;
     RecyclerViewAdapterShoppingList adapter;
@@ -55,10 +58,9 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
             @Override
             public void onClick(View view) {
                 String text = input.getText().toString();
-                if(text.length() == 0){
+                if (text.length() == 0) {
                     makeToast("Enter an item");
-                }
-                else{
+                } else {
                     addItem(text);
                     input.setText("");
                     makeToast("Added: " + text);
@@ -67,24 +69,14 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         });
     }
 
-    private void createItems(){
-
-
-
+    private void createItems() {
         count = new ArrayList<>();
-        count.add(1);
-        count.add(2);
-        count.add(4);
-        count.add(1);
-        count.add(3);
-        count.add(6);
-        count.add(23);
 
         initRecyclerView();
     }
 
 
-    private void initRecyclerView(){
+    private void initRecyclerView() {
         layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = getView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
@@ -103,24 +95,24 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         removeItem(position);
     }
 
-    public void addItem(String item){
-        if (ingredients.contains(item)){
-            makeToast("Item already in list");
-        }
-        else{
-            items.add(item);
-            count.add(1);
-            recyclerView.setAdapter(adapter);
-        }
+    public void addItem(String item) {
+//        if (ingredients.contains(item)){
+//            makeToast("Item already in list");
+//        } TODO
+        database.mainDao().insert(new Ingredient(item));
+        ingredients = database.mainDao().getAll();
+        count.add(1);
+        recyclerView.setAdapter(adapter);
+
     }
 
-    public void removeItem(int remove){
-        if (count.get(remove) > 1){
+    public void removeItem(int remove) {
+        if (count.get(remove) > 1) {
             count.set(remove, (count.get(remove) - 1));
             recyclerView.setAdapter(adapter);
-        }
-        else{
-            items.remove(remove);
+        } else {
+            database.mainDao().delete(ingredients.get(remove));
+            ingredients.remove(remove);
             count.remove(remove);
             recyclerView.setAdapter(adapter);
         }
@@ -128,7 +120,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     Toast t;
 
-    public void makeToast(String s){
+    public void makeToast(String s) {
         if (t != null) t.cancel();
         t = Toast.makeText(getContext().getApplicationContext(), s, Toast.LENGTH_SHORT);
         t.show();

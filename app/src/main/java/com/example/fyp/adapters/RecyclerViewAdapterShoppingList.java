@@ -17,11 +17,11 @@ import java.util.List;
 
 public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<RecyclerViewAdapterShoppingList.ViewHolder> {
 
-    ArrayList<Ingredient> list = new ArrayList<>();
+    List<Ingredient> list = new ArrayList<>();
     ArrayList<Integer> nCount = new ArrayList<>();
     OnShoppingItemListener onShoppingItemListener;
 
-    public RecyclerViewAdapterShoppingList(ArrayList<Ingredient> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
+    public RecyclerViewAdapterShoppingList(List<Ingredient> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
         this.list = list;
         this.nCount = nCount;
         this.onShoppingItemListener = onShoppingItemListener;

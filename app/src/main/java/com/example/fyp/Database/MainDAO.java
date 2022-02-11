@@ -9,7 +9,6 @@ import androidx.room.Query;
 
 import com.example.fyp.Models.Ingredient;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Dao
@@ -18,10 +17,10 @@ public interface MainDAO {
     void insert(Ingredient ingredient);
 
     @Query("SELECT * FROM ingredients")
-    ArrayList<Ingredient> getAll();
+    List<Ingredient> getAll();
 
     @Query("UPDATE ingredients SET name = :name, WHERE ID = :id")
-    void update(int id, String name);
+    void update(String name, int id);
 
     @Delete
     void delete(Ingredient ingredient);

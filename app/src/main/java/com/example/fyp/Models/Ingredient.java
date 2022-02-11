@@ -15,6 +15,10 @@ public class Ingredient implements Serializable {
     @ColumnInfo(name = "name")
     String name = "";
 
+    public Ingredient(String name) {
+        this.name = name;
+    }
+
     public int getID() {
         return ID;
     }
