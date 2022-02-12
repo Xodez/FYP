@@ -7,21 +7,21 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 
-import com.example.fyp.Models.Ingredient;
+import com.example.fyp.Models.Ingredients;
 
 import java.util.List;
 
 @Dao
 public interface MainDAO {
     @Insert(onConflict = REPLACE)
-    void insert(Ingredient ingredient);
+    void insert(Ingredients ingredients);
 
     @Query("SELECT * FROM ingredients")
-    List<Ingredient> getAll();
+    List<Ingredients> getAll();
 
-    @Query("UPDATE ingredients SET name = :name, WHERE ID = :id")
+    @Query("UPDATE ingredients SET name = :name WHERE ID = :id")
     void update(String name, int id);
 
     @Delete
-    void delete(Ingredient ingredient);
+    void delete(Ingredients ingredients);
 }

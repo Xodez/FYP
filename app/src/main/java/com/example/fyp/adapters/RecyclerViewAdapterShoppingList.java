@@ -1,5 +1,8 @@
 package com.example.fyp.adapters;
 
+import static android.content.ContentValues.TAG;
+
+import android.util.Log;
 import android.view.LayoutInflater;
 
 import android.view.View;
@@ -9,7 +12,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.fyp.Models.Ingredient;
+import com.example.fyp.Models.Ingredients;
 import com.example.fyp.R;
 
 import java.util.ArrayList;
@@ -17,11 +20,11 @@ import java.util.List;
 
 public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<RecyclerViewAdapterShoppingList.ViewHolder> {
 
-    List<Ingredient> list = new ArrayList<>();
+    List<Ingredients> list = new ArrayList<>();
     ArrayList<Integer> nCount = new ArrayList<>();
     OnShoppingItemListener onShoppingItemListener;
 
-    public RecyclerViewAdapterShoppingList(List<Ingredient> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
+    public RecyclerViewAdapterShoppingList(List<Ingredients> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
         this.list = list;
         this.nCount = nCount;
         this.onShoppingItemListener = onShoppingItemListener;

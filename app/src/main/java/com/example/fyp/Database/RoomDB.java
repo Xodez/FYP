@@ -6,9 +6,9 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-import com.example.fyp.Models.Ingredient;
+import com.example.fyp.Models.Ingredients;
 
-@Database(entities = Ingredient.class, version = 1, exportSchema = false)
+@Database(entities = Ingredients.class, version = 1, exportSchema = false)
 public abstract class RoomDB extends RoomDatabase {
     private static RoomDB database;
     private static String DATABASE_NAME = "RecipeApp";

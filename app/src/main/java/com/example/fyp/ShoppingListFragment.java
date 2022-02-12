@@ -1,5 +1,7 @@
 package com.example.fyp;
 
+import static android.content.ContentValues.TAG;
+
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -8,6 +10,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,7 +19,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
-import com.example.fyp.Models.Ingredient;
+import com.example.fyp.Models.Ingredients;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 
 import java.util.ArrayList;
@@ -24,8 +27,8 @@ import java.util.List;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
-    List<Ingredient> ingredients = new ArrayList<>();
-    ArrayList<Integer> count;
+    List<Ingredients> ingredients = new ArrayList<>();
+    ArrayList<Integer> count = new ArrayList<>();
     RecyclerView recyclerView;
     RecyclerViewAdapterShoppingList adapter;
     LinearLayoutManager layoutManager;
@@ -49,6 +52,12 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         database = RoomDB.getInstance(this.getContext());
         ingredients = database.mainDao().getAll();
 
+        Log.d(TAG, "onViewCreated: " + ingredients);
+
+        for (int i = 0; i < ingredients.size(); i++) {
+            count.add(1);
+        }
+
         createItems();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
@@ -70,7 +79,6 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     private void createItems() {
-        count = new ArrayList<>();
 
         initRecyclerView();
     }
@@ -99,7 +107,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 //        if (ingredients.contains(item)){
 //            makeToast("Item already in list");
 //        } TODO
-        database.mainDao().insert(new Ingredient(item));
+        database.mainDao().insert(new Ingredients(item));
         ingredients = database.mainDao().getAll();
         count.add(1);
         recyclerView.setAdapter(adapter);

@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey;
 import java.io.Serializable;
 
 @Entity(tableName = "ingredients")
-public class Ingredient implements Serializable {
+public class Ingredients implements Serializable {
 
     @PrimaryKey(autoGenerate = true)
     int ID = 0;
@@ -15,7 +15,7 @@ public class Ingredient implements Serializable {
     @ColumnInfo(name = "name")
     String name = "";
 
-    public Ingredient(String name) {
+    public Ingredients(String name) {
         this.name = name;
     }
 
