@@ -18,6 +18,7 @@ import com.example.fyp.R;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<RecyclerViewAdapterShoppingList.ViewHolder> {
 
@@ -39,7 +40,9 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
     @Override
     public void onBindViewHolder(@NonNull RecyclerViewAdapterShoppingList.ViewHolder holder, int position) {
         holder.count.setText(String.valueOf(shoppingLists.get(position).getAmount()));
-        holder.name.setText(shoppingLists.get(position).getIngredient().getName());
+        String preUpper = shoppingLists.get(position).getIngredient().getName();
+        String postUpper = preUpper.substring(0, 1).toUpperCase() + preUpper.substring(1).toLowerCase();
+        holder.name.setText(postUpper);
         holder.remove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {

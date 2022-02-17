@@ -66,7 +66,6 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
                 } else {
                     addItem(text);
                     input.setText("");
-                    makeToast("Added: " + text);
                 }
             }
         });
@@ -100,16 +99,20 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     public void addItem(String item) {
-//        if (ingredients.contains(item)){
-//            makeToast("Item already in list");
-//        } TODO
-        Ingredients temp = new Ingredients(item);
-        database.mainDao().insertIngredient(temp);
-        ShoppingList temp2 = new ShoppingList(temp.getName(), temp, 1);
-        database.mainDao().insertShoppingList(temp2);
-        shoppingList.clear();
-        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
-        recyclerView.setAdapter(adapter);
+        if (database.mainDao().checkIfItemExists(item.toUpperCase()).size() > 0){
+            makeToast("Item already in list");
+        }
+        else {
+            Log.d(TAG, "addItem: " + database.mainDao().checkIfItemExists(item));
+            Ingredients temp = new Ingredients(item.toUpperCase());
+            database.mainDao().insertIngredient(temp);
+            ShoppingList temp2 = new ShoppingList(temp.getName(), temp, 1);
+            database.mainDao().insertShoppingList(temp2);
+            shoppingList.clear();
+            shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+            recyclerView.setAdapter(adapter);
+            makeToast("Added: " + item);
+        }
     }
 
     public void removeItem(int remove) {

@@ -39,5 +39,8 @@ public interface MainDAO {
 
     @Delete
     void deleteShoppingListItem(ShoppingList shoppingList);
+
+    @Query("SELECT ID FROM shopping_list WHERE :id = ID")
+    List<String> checkIfItemExists(String id);
 }
 
