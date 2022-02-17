@@ -5,10 +5,15 @@ import android.content.Context;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.TypeConverter;
+import androidx.room.TypeConverters;
 
+import com.example.fyp.Converters;
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.ShoppingList;
 
-@Database(entities = Ingredients.class, version = 1, exportSchema = false)
+@Database(entities = {ShoppingList.class, Ingredients.class}, version = 2, exportSchema = false)
+@TypeConverters(Converters.class)
 public abstract class RoomDB extends RoomDatabase {
     private static RoomDB database;
     private static String DATABASE_NAME = "RecipeApp";

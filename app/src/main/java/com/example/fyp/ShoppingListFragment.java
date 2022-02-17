@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 
 import java.util.ArrayList;
@@ -27,8 +28,7 @@ import java.util.List;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
-    List<Ingredients> ingredients = new ArrayList<>();
-    ArrayList<Integer> count = new ArrayList<>();
+    List<ShoppingList> shoppingList = new ArrayList<>();
     RecyclerView recyclerView;
     RecyclerViewAdapterShoppingList adapter;
     LinearLayoutManager layoutManager;
@@ -50,13 +50,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         super.onViewCreated(view, savedInstanceState);
 
         database = RoomDB.getInstance(this.getContext());
-        ingredients = database.mainDao().getAll();
-
-        Log.d(TAG, "onViewCreated: " + ingredients);
-
-        for (int i = 0; i < ingredients.size(); i++) {
-            count.add(1);
-        }
+        shoppingList = database.mainDao().getAllShoppingListItems();
 
         createItems();
         input = view.findViewById(R.id.input);
@@ -88,14 +82,14 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = getView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
-        adapter = new RecyclerViewAdapterShoppingList(ingredients, count, this);
+        adapter = new RecyclerViewAdapterShoppingList(shoppingList, this);
         recyclerView.setAdapter(adapter);
     }
 
     @Override
     public void onShoppingItemClick(int position) {
-        count.set(position, (count.get(position) + 1));
-        recyclerView.setAdapter(adapter);
+//        count.set(position, (count.get(position) + 1));
+//        recyclerView.setAdapter(adapter); TODO
     }
 
     @Override
@@ -107,23 +101,23 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 //        if (ingredients.contains(item)){
 //            makeToast("Item already in list");
 //        } TODO
-        database.mainDao().insert(new Ingredients(item));
-        ingredients = database.mainDao().getAll();
-        count.add(1);
+        Ingredients temp = new Ingredients(item);
+        database.mainDao().insertIngredient(temp);
+        ShoppingList temp2 = new ShoppingList(temp, 1);
+        database.mainDao().insertShoppingList(temp2);
         recyclerView.setAdapter(adapter);
-
     }
 
     public void removeItem(int remove) {
-        if (count.get(remove) > 1) {
-            count.set(remove, (count.get(remove) - 1));
-            recyclerView.setAdapter(adapter);
-        } else {
-            database.mainDao().delete(ingredients.get(remove));
-            ingredients.remove(remove);
-            count.remove(remove);
-            recyclerView.setAdapter(adapter);
-        }
+//        if (shoppingList.get(remove).getAmount() > 1) {
+//            count.set(remove, (count.get(remove) - 1));
+//            recyclerView.setAdapter(adapter);
+//        } else {
+//            database.mainDao().delete(ingredients.get(remove));
+//            ingredients.remove(remove);
+//            count.remove(remove);
+//            recyclerView.setAdapter(adapter);
+//        } todo
     }
 
     Toast t;

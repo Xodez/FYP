@@ -8,20 +8,27 @@ import androidx.room.Insert;
 import androidx.room.Query;
 
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.ShoppingList;
 
 import java.util.List;
 
 @Dao
 public interface MainDAO {
     @Insert(onConflict = REPLACE)
-    void insert(Ingredients ingredients);
+    void insertIngredient(Ingredients ingredients);
+
+    @Insert(onConflict = REPLACE)
+    void insertShoppingList(ShoppingList shoppingList);
 
     @Query("SELECT * FROM ingredients")
-    List<Ingredients> getAll();
+    List<Ingredients> getAllIngredients();
+
+    @Query("SELECT * FROM shopping_list")
+    List<ShoppingList> getAllShoppingListItems();
 
     @Query("UPDATE ingredients SET name = :name WHERE ID = :id")
-    void update(String name, int id);
+    void updateIngredient(String name, int id);
 
     @Delete
-    void delete(Ingredients ingredients);
+    void deleteIngredient(Ingredients ingredients);
 }

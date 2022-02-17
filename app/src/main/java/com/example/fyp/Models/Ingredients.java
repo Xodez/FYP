@@ -2,11 +2,13 @@ package com.example.fyp.Models;
 
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
+import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 import java.io.Serializable;
 
-@Entity(tableName = "ingredients")
+@Entity(tableName = "ingredients", indices = {@Index(value = {"name"},
+        unique = true)})
 public class Ingredients implements Serializable {
 
     @PrimaryKey(autoGenerate = true)

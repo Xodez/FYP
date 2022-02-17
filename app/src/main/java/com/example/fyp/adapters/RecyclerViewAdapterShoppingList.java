@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.R;
 
 import java.util.ArrayList;
@@ -20,13 +21,11 @@ import java.util.List;
 
 public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<RecyclerViewAdapterShoppingList.ViewHolder> {
 
-    List<Ingredients> list = new ArrayList<>();
-    ArrayList<Integer> nCount = new ArrayList<>();
+    List<ShoppingList> shoppingLists = new ArrayList<>();
     OnShoppingItemListener onShoppingItemListener;
 
-    public RecyclerViewAdapterShoppingList(List<Ingredients> list, ArrayList<Integer> nCount, OnShoppingItemListener onShoppingItemListener) {
-        this.list = list;
-        this.nCount = nCount;
+    public RecyclerViewAdapterShoppingList(List<ShoppingList> shoppingLists, OnShoppingItemListener onShoppingItemListener) {
+        this.shoppingLists = shoppingLists;
         this.onShoppingItemListener = onShoppingItemListener;
     }
 
@@ -39,8 +38,8 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerViewAdapterShoppingList.ViewHolder holder, int position) {
-        holder.count.setText(String.valueOf(nCount.get(position)));
-        holder.name.setText(list.get(position).getName());
+        holder.count.setText(String.valueOf(shoppingLists.get(position).getAmount()));
+        holder.name.setText(shoppingLists.get(position).getIngredient().getName());
         holder.remove.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -51,7 +50,7 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
 
     @Override
     public int getItemCount() {
-        return list.size();
+        return shoppingLists.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
