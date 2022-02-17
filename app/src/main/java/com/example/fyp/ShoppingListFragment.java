@@ -88,8 +88,10 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     @Override
     public void onShoppingItemClick(int position) {
-//        count.set(position, (count.get(position) + 1));
-//        recyclerView.setAdapter(adapter); TODO
+        database.mainDao().updateShoppingListAmount(1, shoppingList.get(position).getIngredient().getName());
+        shoppingList.clear();
+        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+        recyclerView.setAdapter(adapter);
     }
 
     @Override
@@ -103,21 +105,22 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 //        } TODO
         Ingredients temp = new Ingredients(item);
         database.mainDao().insertIngredient(temp);
-        ShoppingList temp2 = new ShoppingList(temp, 1);
+        ShoppingList temp2 = new ShoppingList(temp.getName(), temp, 1);
         database.mainDao().insertShoppingList(temp2);
+        shoppingList.clear();
+        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
         recyclerView.setAdapter(adapter);
     }
 
     public void removeItem(int remove) {
-//        if (shoppingList.get(remove).getAmount() > 1) {
-//            count.set(remove, (count.get(remove) - 1));
-//            recyclerView.setAdapter(adapter);
-//        } else {
-//            database.mainDao().delete(ingredients.get(remove));
-//            ingredients.remove(remove);
-//            count.remove(remove);
-//            recyclerView.setAdapter(adapter);
-//        } todo
+        if (shoppingList.get(remove).getAmount() > 1) {
+            database.mainDao().updateShoppingListAmount(-1, shoppingList.get(remove).getIngredient().getName());
+        } else {
+            database.mainDao().deleteShoppingListItem(shoppingList.get(remove));
+        }
+        shoppingList.clear();
+        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+        recyclerView.setAdapter(adapter);
     }
 
     Toast t;
