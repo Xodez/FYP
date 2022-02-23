@@ -8,6 +8,7 @@ import androidx.room.Insert;
 import androidx.room.Query;
 
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.ShoppingList;
 
 import java.util.List;
@@ -42,5 +43,18 @@ public interface MainDAO {
 
     @Query("SELECT ID FROM shopping_list WHERE :id = ID")
     List<String> checkIfItemExists(String id);
+
+    //Inventory
+    @Insert(onConflict = REPLACE)
+    void insertInventory(Inventory inventory);
+
+    @Query("SELECT * FROM inventory")
+    List<Inventory> getAllInventoryItems();
+
+    @Delete
+    void deleteInventoryItem(Inventory inventory);
+
+    @Query("SELECT ID FROM inventory WHERE :id = ID")
+    List<Integer> checkIfInventoryItemExists(String id);
 }
 

@@ -6,11 +6,14 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
-@Entity(tableName = "inventory",  indices = {@Index(value = {"ingredient"}, unique = true)})
-public class Inventory {
-    @PrimaryKey
-    @NonNull
-    String ID = "";
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity(tableName = "inventory")
+public class Inventory implements Serializable {
+    @PrimaryKey(autoGenerate = true)
+    int ID = 0;
 
     @ColumnInfo(name = "ingredient")
     Ingredients ingredient;
@@ -21,12 +24,17 @@ public class Inventory {
     @ColumnInfo(name = "expiry_date")
     String expiryDate = "";
 
-    @NonNull
-    public String getID() {
+    public Inventory(Ingredients ingredient, int amount, String expiryDate) {
+        this.ingredient = ingredient;
+        this.amount = amount;
+        this.expiryDate = expiryDate;
+    }
+
+    public int getID() {
         return ID;
     }
 
-    public void setID(@NonNull String ID) {
+    public void setID(int ID) {
         this.ID = ID;
     }
 

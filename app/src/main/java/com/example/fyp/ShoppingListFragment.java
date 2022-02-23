@@ -20,11 +20,13 @@ import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
@@ -52,7 +54,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         database = RoomDB.getInstance(this.getContext());
         shoppingList = database.mainDao().getAllShoppingListItems();
 
-        createItems();
+        initRecyclerView();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
         remove = view.findViewById(R.id.remove);
@@ -71,15 +73,9 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         });
     }
 
-    private void createItems() {
-
-        initRecyclerView();
-    }
-
-
     private void initRecyclerView() {
         layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
-        recyclerView = getView().findViewById(R.id.verticalView);
+        recyclerView = requireView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
         adapter = new RecyclerViewAdapterShoppingList(shoppingList, this);
         recyclerView.setAdapter(adapter);
@@ -116,6 +112,9 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     public void removeItem(int remove) {
+        String tempList = "01/01/2022";
+        Inventory temp = new Inventory(database.mainDao().getAllIngredients().get(remove), 1, tempList);
+        database.mainDao().insertInventory(temp);
         if (shoppingList.get(remove).getAmount() > 1) {
             database.mainDao().updateShoppingListAmount(-1, shoppingList.get(remove).getIngredient().getName());
         } else {
