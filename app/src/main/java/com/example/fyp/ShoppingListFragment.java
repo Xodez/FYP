@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
+import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.ShoppingList;
@@ -91,14 +92,32 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     @Override
     public void onRemoveButtonClick(int position) {
-        removeItem(position);
+        String tempList = "01/01/2022";
+        ExpiryDate expiryDate = new ExpiryDate(tempList, shoppingList.get(position).getIngredient());
+        if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
+            database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());
+            database.mainDao().insertExpiryDate(expiryDate);
+        }
+        else{
+            Inventory temp = new Inventory(shoppingList.get(position).getIngredient(), 1);
+            database.mainDao().insertExpiryDate(expiryDate);
+            database.mainDao().insertInventory(temp);
+        }
+
+        if (shoppingList.get(position).getAmount() > 1) {
+            database.mainDao().updateShoppingListAmount(-1, shoppingList.get(position).getIngredient().getName());
+        } else {
+            database.mainDao().deleteShoppingListItem(shoppingList.get(position));
+        }
+        shoppingList.clear();
+        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+        recyclerView.setAdapter(adapter);
     }
 
     public void addItem(String item) {
-        if (database.mainDao().checkIfItemExists(item.toUpperCase()).size() > 0){
+        if (database.mainDao().checkIfItemExists(item.toUpperCase()).size() > 0) {
             makeToast("Item already in list");
-        }
-        else {
+        } else {
             Log.d(TAG, "addItem: " + database.mainDao().checkIfItemExists(item));
             Ingredients temp = new Ingredients(item.toUpperCase());
             database.mainDao().insertIngredient(temp);
@@ -109,20 +128,6 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
             recyclerView.setAdapter(adapter);
             makeToast("Added: " + item);
         }
-    }
-
-    public void removeItem(int remove) {
-        String tempList = "01/01/2022";
-        Inventory temp = new Inventory(shoppingList.get(remove).getIngredient(), 1, tempList);
-        database.mainDao().insertInventory(temp);
-        if (shoppingList.get(remove).getAmount() > 1) {
-            database.mainDao().updateShoppingListAmount(-1, shoppingList.get(remove).getIngredient().getName());
-        } else {
-            database.mainDao().deleteShoppingListItem(shoppingList.get(remove));
-        }
-        shoppingList.clear();
-        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
-        recyclerView.setAdapter(adapter);
     }
 
     Toast t;

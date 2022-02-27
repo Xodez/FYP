@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity(tableName = "inventory")
+@Entity(tableName = "inventory", indices = {@Index(value = {"ingredient"}, unique = true)})
 public class Inventory implements Serializable {
     @PrimaryKey(autoGenerate = true)
     int ID = 0;
@@ -21,13 +21,9 @@ public class Inventory implements Serializable {
     @ColumnInfo(name = "amount")
     int amount = 0;
 
-    @ColumnInfo(name = "expiry_date")
-    String expiryDate = "";
-
-    public Inventory(Ingredients ingredient, int amount, String expiryDate) {
+    public Inventory(Ingredients ingredient, int amount) {
         this.ingredient = ingredient;
         this.amount = amount;
-        this.expiryDate = expiryDate;
     }
 
     public int getID() {
@@ -54,11 +50,5 @@ public class Inventory implements Serializable {
         this.amount = amount;
     }
 
-    public String getExpiryDate() {
-        return expiryDate;
-    }
-
-    public void setExpiryDate(String expiryDate) {
-        this.expiryDate = expiryDate;
-    }
 }
+

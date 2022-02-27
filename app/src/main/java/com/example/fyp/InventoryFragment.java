@@ -14,7 +14,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 
 import com.example.fyp.Database.RoomDB;
-import com.example.fyp.Models.Inventory;
+import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.adapters.RecyclerViewAdapterInventory;
 
 import java.util.ArrayList;
@@ -22,7 +22,7 @@ import java.util.List;
 
 public class InventoryFragment extends Fragment implements RecyclerViewAdapterInventory.OnInventoryItemListener {
 
-    List<Inventory> inventories = new ArrayList<>();
+    List<InventoryWithExpiryDates> inventories = new ArrayList<>();
     RecyclerView recyclerView;
     RecyclerViewAdapterInventory adapter;
     LinearLayoutManager layoutManager;
@@ -42,7 +42,7 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         super.onViewCreated(view, savedInstanceState);
 
         database = RoomDB.getInstance(this.getContext());
-        inventories = database.mainDao().getAllInventoryItems();
+        inventories = database.mainDao().getInventoriesWithExpiryDates();
         initRecyclerView();
     }
 
@@ -56,7 +56,7 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
 
     public void refresh() {
         inventories.clear();
-        inventories.addAll(database.mainDao().getAllInventoryItems());
+        inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
         recyclerView.setAdapter(adapter);
     }
 
@@ -67,7 +67,14 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
 
     @Override
     public void onRemoveButtonClick(int position) {
-
+//        if (inventories.get(position).getAmount() > 1) {
+//            database.mainDao().updateInventoryListAmount(-1, shoppingList.get(position).getIngredient().getName());
+//        } else {
+//            database.mainDao().deleteShoppingListItem(shoppingList.get(position));
+//        }
+//        shoppingList.clear();
+//        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+//        recyclerView.setAdapter(adapter);
     }
 
 }

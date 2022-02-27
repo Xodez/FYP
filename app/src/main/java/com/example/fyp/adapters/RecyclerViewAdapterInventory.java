@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.fyp.Models.Inventory;
+import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.R;
 
 import java.util.ArrayList;
@@ -17,10 +18,10 @@ import java.util.List;
 
 public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerViewAdapterInventory.ViewHolder> {
 
-    List<Inventory> inventoryList = new ArrayList<>();
+    List<InventoryWithExpiryDates> inventoryList = new ArrayList<>();
     OnInventoryItemListener onInventoryItemListener;
 
-    public RecyclerViewAdapterInventory(List<Inventory> inventoryList, OnInventoryItemListener onInventoryItemListener) {
+    public RecyclerViewAdapterInventory(List<InventoryWithExpiryDates> inventoryList, OnInventoryItemListener onInventoryItemListener) {
         this.inventoryList = inventoryList;
         this.onInventoryItemListener = onInventoryItemListener;
     }
@@ -34,9 +35,9 @@ public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerV
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerViewAdapterInventory.ViewHolder holder, int position) {
-        holder.expiryDate.setText(inventoryList.get(position).getExpiryDate());
-        holder.count.setText(String.valueOf(inventoryList.get(position).getAmount()));
-        String preUpper = inventoryList.get(position).getIngredient().getName();
+        holder.expiryDate.setText(inventoryList.get(position).expiryDates.get(0).getExpiryDate());
+        holder.count.setText(String.valueOf(inventoryList.get(position).getInventory().getAmount()));
+        String preUpper = inventoryList.get(position).getInventory().getIngredient().getName();
         String postUpper = preUpper.substring(0, 1).toUpperCase() + preUpper.substring(1).toLowerCase();
         holder.name.setText(postUpper);
         holder.remove.setOnClickListener(new View.OnClickListener() {
