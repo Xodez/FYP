@@ -15,6 +15,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -30,6 +32,7 @@ import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
@@ -41,8 +44,10 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     RoomDB database;
     int mDate, mMonth, mYear;
     String dateFormatted;
+    List<String> ingredients;
+    ArrayAdapter<String> stringAdapter;
 
-    EditText input;
+    AutoCompleteTextView input;
     ImageView enter;
     ImageView remove;
 
@@ -59,11 +64,16 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
         database = RoomDB.getInstance(this.getContext());
         shoppingList = database.mainDao().getAllShoppingListItems();
+        ingredients = new ArrayList<>();
+        for (String i : database.mainDao().getAllIngredientNames()){
+            ingredients.add(i.toLowerCase());
+        }
 
-        initRecyclerView();
         input = view.findViewById(R.id.input);
         enter = view.findViewById(R.id.add);
         remove = view.findViewById(R.id.remove);
+
+        initRecyclerView();
 
         enter.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,6 +95,8 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         recyclerView.setLayoutManager(layoutManager);
         adapter = new RecyclerViewAdapterShoppingList(shoppingList, this);
         recyclerView.setAdapter(adapter);
+        stringAdapter = new ArrayAdapter<String>(this.getContext(), android.R.layout.simple_list_item_1, ingredients);
+        input.setAdapter(stringAdapter);
     }
 
     @Override
@@ -104,13 +116,12 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         DatePickerDialog datePickerDialog = new DatePickerDialog(this.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePicker datePicker, int year, int month, int date) {
-                dateFormatted = date+"-"+month+"-"+year;
+                dateFormatted = date + "-" + month + "-" + year;
                 ExpiryDate expiryDate = new ExpiryDate(dateFormatted, shoppingList.get(position).getIngredient());
                 if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
                     database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());
                     database.mainDao().insertExpiryDate(expiryDate);
-                }
-                else{
+                } else {
                     Inventory temp = new Inventory(shoppingList.get(position).getIngredient(), 1);
                     database.mainDao().insertInventory(temp);
                     database.mainDao().insertExpiryDate(expiryDate);
@@ -133,7 +144,10 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     public void addItem(String item) {
         if (database.mainDao().checkIfItemExists(item.toUpperCase()).size() > 0) {
-            makeToast("Item already in list");
+            database.mainDao().updateShoppingListAmount(1, item.toUpperCase());
+            shoppingList.clear();
+            shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+            recyclerView.setAdapter(adapter);
         } else {
             Log.d(TAG, "addItem: " + database.mainDao().checkIfItemExists(item));
             Ingredients temp = new Ingredients(item.toUpperCase());
@@ -143,6 +157,13 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
             shoppingList.clear();
             shoppingList.addAll(database.mainDao().getAllShoppingListItems());
             recyclerView.setAdapter(adapter);
+            stringAdapter.clear();
+            ingredients.clear();
+            for (String i : database.mainDao().getAllIngredientNames()){
+                ingredients.add(i.toLowerCase());
+            }
+            stringAdapter.addAll(ingredients);
+            stringAdapter.notifyDataSetChanged();
             makeToast("Added: " + item);
         }
     }

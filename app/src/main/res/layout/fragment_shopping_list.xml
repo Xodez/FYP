@@ -19,15 +19,16 @@
             android:layout_alignParentTop="true"
             android:background="#F1FEFF">
 
-            <EditText
+            <AutoCompleteTextView
                 android:id="@+id/input"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
                 android:ems="10"
+                android:completionThreshold="2"
                 android:hint="Enter item here">
 
-            </EditText>
+            </AutoCompleteTextView>
 
             <ImageView
                 android:id="@+id/add"

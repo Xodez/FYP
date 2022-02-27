@@ -25,6 +25,9 @@ public interface MainDAO {
     @Query("SELECT * FROM ingredients")
     List<Ingredients> getAllIngredients();
 
+    @Query("SELECT name FROM ingredients")
+    List<String> getAllIngredientNames();
+
     @Query("UPDATE ingredients SET name = :name WHERE ID = :id")
     void updateIngredient(String name, int id);
 
