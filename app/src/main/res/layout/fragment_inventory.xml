@@ -24,10 +24,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
+                android:backgroundTint="#CE93D8"
                 android:ems="10"
-                android:hint="Add new item"
-                android:backgroundTint="#CE93D8">
-            </Button>
+                android:hint="Add new item"></Button>
 
         </RelativeLayout>
 

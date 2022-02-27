@@ -3,6 +3,7 @@ package com.example.fyp.adapters;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -61,7 +62,7 @@ public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerV
         return inventoryList.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         TextView count;
         TextView name;
         TextView expiryDate;
@@ -75,18 +76,10 @@ public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerV
             name = itemView.findViewById(R.id.text1);
             remove = itemView.findViewById(R.id.remove);
             this.onInventoryItemListener = onInventoryItemListener;
-            itemView.setOnClickListener(this);
-        }
-
-        @Override
-        public void onClick(View view) {
-            onInventoryItemListener.onInventoryItemClick(getAdapterPosition());
         }
     }
 
     public interface OnInventoryItemListener {
-        void onInventoryItemClick(int position);
-
         void onRemoveButtonClick(int position);
     }
 }
