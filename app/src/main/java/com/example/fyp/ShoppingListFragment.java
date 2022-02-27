@@ -113,7 +113,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     public void removeItem(int remove) {
         String tempList = "01/01/2022";
-        Inventory temp = new Inventory(database.mainDao().getAllIngredients().get(remove), 1, tempList);
+        Inventory temp = new Inventory(shoppingList.get(remove).getIngredient(), 1, tempList);
         database.mainDao().insertInventory(temp);
         if (shoppingList.get(remove).getAmount() > 1) {
             database.mainDao().updateShoppingListAmount(-1, shoppingList.get(remove).getIngredient().getName());

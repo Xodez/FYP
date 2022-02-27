@@ -46,18 +46,17 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         initRecyclerView();
     }
 
-    @Override
-    public void onViewStateRestored(@Nullable Bundle savedInstanceState) {
-        super.onViewStateRestored(savedInstanceState);
-
-        recyclerView.setAdapter(adapter);
-    }
-
     private void initRecyclerView() {
         layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = requireView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
         adapter = new RecyclerViewAdapterInventory(inventories, this);
+        recyclerView.setAdapter(adapter);
+    }
+
+    public void refresh() {
+        inventories.clear();
+        inventories.addAll(database.mainDao().getAllInventoryItems());
         recyclerView.setAdapter(adapter);
     }
 
@@ -70,4 +69,5 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
     public void onRemoveButtonClick(int position) {
 
     }
+
 }
