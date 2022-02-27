@@ -23,12 +23,13 @@
         android:layout_below="@id/text1"
         android:layout_alignStart="@id/text1"
         android:textAppearance="?attr/textAppearanceListItemSecondary"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="@color/primaryTextColor"/>
 
     <ImageView
         android:id="@+id/remove"
-        android:layout_width="22sp"
-        android:layout_height="22sp"
+        android:layout_width="30sp"
+        android:layout_height="30sp"
         android:layout_centerVertical="true"
         android:layout_marginEnd="18sp"
         android:layout_alignParentRight="true"

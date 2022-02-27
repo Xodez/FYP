@@ -26,7 +26,8 @@
         android:layout_alignStart="@id/text1"
         android:layout_toStartOf="@+id/text3"
         android:textAppearance="?attr/textAppearanceListItemSecondary"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="@color/primaryTextColor"/>
 
     <TextView
         android:id="@+id/text3"
@@ -35,12 +36,13 @@
         android:layout_centerVertical="true"
         android:layout_toStartOf="@+id/remove"
         android:textAppearance="?attr/textAppearanceListItemSecondary"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textColor="@color/primaryTextColor"/>
 
     <ImageView
         android:id="@+id/remove"
-        android:layout_width="22sp"
-        android:layout_height="22sp"
+        android:layout_width="30sp"
+        android:layout_height="30sp"
         android:layout_centerVertical="true"
         android:layout_marginEnd="18sp"
         android:layout_alignParentEnd="true"
