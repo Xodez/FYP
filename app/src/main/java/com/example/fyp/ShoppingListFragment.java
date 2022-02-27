@@ -2,6 +2,7 @@ package com.example.fyp;
 
 import static android.content.ContentValues.TAG;
 
+import android.app.DatePickerDialog;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -14,6 +15,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -26,6 +28,7 @@ import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Objects;
 
@@ -36,6 +39,8 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     RecyclerViewAdapterShoppingList adapter;
     LinearLayoutManager layoutManager;
     RoomDB database;
+    int mDate, mMonth, mYear;
+    String dateFormatted;
 
     EditText input;
     ImageView enter;
@@ -92,26 +97,38 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     @Override
     public void onRemoveButtonClick(int position) {
-        String tempList = "01/01/2022";
-        ExpiryDate expiryDate = new ExpiryDate(tempList, shoppingList.get(position).getIngredient());
-        if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
-            database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());
-            database.mainDao().insertExpiryDate(expiryDate);
-        }
-        else{
-            Inventory temp = new Inventory(shoppingList.get(position).getIngredient(), 1);
-            database.mainDao().insertExpiryDate(expiryDate);
-            database.mainDao().insertInventory(temp);
-        }
+        final Calendar cal = Calendar.getInstance();
+        mDate = cal.get(Calendar.DATE);
+        mMonth = cal.get(Calendar.MONTH);
+        mYear = cal.get(Calendar.YEAR);
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker datePicker, int year, int month, int date) {
+                dateFormatted = date+"-"+month+"-"+year;
+                ExpiryDate expiryDate = new ExpiryDate(dateFormatted, shoppingList.get(position).getIngredient());
+                if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
+                    database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());
+                    database.mainDao().insertExpiryDate(expiryDate);
+                }
+                else{
+                    Inventory temp = new Inventory(shoppingList.get(position).getIngredient(), 1);
+                    database.mainDao().insertInventory(temp);
+                    database.mainDao().insertExpiryDate(expiryDate);
+                }
 
-        if (shoppingList.get(position).getAmount() > 1) {
-            database.mainDao().updateShoppingListAmount(-1, shoppingList.get(position).getIngredient().getName());
-        } else {
-            database.mainDao().deleteShoppingListItem(shoppingList.get(position));
-        }
-        shoppingList.clear();
-        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
-        recyclerView.setAdapter(adapter);
+                if (shoppingList.get(position).getAmount() > 1) {
+                    database.mainDao().updateShoppingListAmount(-1, shoppingList.get(position).getIngredient().getName());
+                } else {
+                    database.mainDao().deleteShoppingListItem(shoppingList.get(position));
+                }
+                shoppingList.clear();
+                shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+                recyclerView.setAdapter(adapter);
+            }
+        }, mYear, mMonth, mDate);
+
+        datePickerDialog.show();
+
     }
 
     public void addItem(String item) {
@@ -134,7 +151,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     public void makeToast(String s) {
         if (t != null) t.cancel();
-        t = Toast.makeText(getContext().getApplicationContext(), s, Toast.LENGTH_SHORT);
+        t = Toast.makeText(requireContext().getApplicationContext(), s, Toast.LENGTH_SHORT);
         t.show();
     }
 }

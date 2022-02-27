@@ -67,5 +67,11 @@ public interface MainDAO {
     //Expiry Date
     @Insert(onConflict = REPLACE)
     void insertExpiryDate(ExpiryDate expiryDate);
+
+    @Query("SELECT * FROM expiry_date WHERE :ingredient = inventory_ingredient ORDER BY expiry_date ASC")
+    List<ExpiryDate> getExpiryDatesOrdered(Ingredients ingredient);
+
+    @Delete
+    void deleteExpiryDate(ExpiryDate expiryDate);
 }
 

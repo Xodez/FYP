@@ -67,14 +67,15 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
 
     @Override
     public void onRemoveButtonClick(int position) {
-//        if (inventories.get(position).getAmount() > 1) {
-//            database.mainDao().updateInventoryListAmount(-1, shoppingList.get(position).getIngredient().getName());
-//        } else {
-//            database.mainDao().deleteShoppingListItem(shoppingList.get(position));
-//        }
-//        shoppingList.clear();
-//        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
-//        recyclerView.setAdapter(adapter);
+        if (inventories.get(position).getInventory().getAmount() > 1) {
+            database.mainDao().updateInventoryListAmount(-1, inventories.get(position).getInventory().getIngredient());
+            database.mainDao().deleteExpiryDate(database.mainDao().getExpiryDatesOrdered(inventories.get(position).getInventory().getIngredient()).get(0));
+        } else {
+            database.mainDao().deleteInventoryItem(inventories.get(position).getInventory());
+        }
+        inventories.clear();
+        inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
+        recyclerView.setAdapter(adapter);
     }
 
 }
