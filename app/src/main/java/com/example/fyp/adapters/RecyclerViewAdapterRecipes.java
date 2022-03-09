@@ -20,18 +20,20 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
     private ArrayList<String> nNames = new ArrayList<>();
     private ArrayList<Integer> nImages = new ArrayList<>();
     private Context mContext;
+    OnRecipeItemListener onRecipeItemListener;
 
-    public RecyclerViewAdapterRecipes(ArrayList<String> nNames, ArrayList<Integer> nImages, Context mContext) {
+    public RecyclerViewAdapterRecipes(ArrayList<String> nNames, ArrayList<Integer> nImages, Context mContext, OnRecipeItemListener onRecipeItemListener) {
         this.nNames = nNames;
         this.nImages = nImages;
         this.mContext = mContext;
+        this.onRecipeItemListener = onRecipeItemListener;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.layout_recipeitem, parent, false);
-        return new ViewHolder(view);
+        return new ViewHolder(view, onRecipeItemListener);
     }
 
     @Override
@@ -46,14 +48,26 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
         return nNames.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder {
+    public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
         ImageView image;
         TextView name;
+        OnRecipeItemListener onRecipeItemListener;
 
-        public ViewHolder(@NonNull View itemView) {
+        public ViewHolder(@NonNull View itemView, OnRecipeItemListener onRecipeItemListener) {
             super(itemView);
             image = itemView.findViewById(R.id.image_view);
             name = itemView.findViewById(R.id.name);
+            this.onRecipeItemListener = onRecipeItemListener;
+            itemView.setOnClickListener(this);
         }
+
+        @Override
+        public void onClick(View view) {
+            onRecipeItemListener.onRecipeClick(getAdapterPosition());
+        }
+    }
+
+    public interface OnRecipeItemListener{
+        void onRecipeClick(int position);
     }
 }
