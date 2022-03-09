@@ -19,8 +19,8 @@ public class Recipe implements Serializable {
     @ColumnInfo(name = "instructions")
     String instructions = "";
 
-    @ColumnInfo(name = "image")
-    String image = "";
+    @ColumnInfo(name = "image", typeAffinity = ColumnInfo.BLOB)
+    byte image;
 
     public int getID() {
         return ID;

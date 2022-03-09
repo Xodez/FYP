@@ -13,6 +13,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginBottom="40dp"
         android:text="Add new Recipe"
+        android:id="@+id/addRecipe"
         android:textColor="@color/primaryTextColor" />
 
     <androidx.recyclerview.widget.RecyclerView
