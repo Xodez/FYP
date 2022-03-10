@@ -12,6 +12,7 @@ import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.InventoryWithExpiryDates;
+import com.example.fyp.Models.Recipe;
 import com.example.fyp.Models.ShoppingList;
 
 import java.util.List;
@@ -76,5 +77,12 @@ public interface MainDAO {
 
     @Delete
     void deleteExpiryDate(ExpiryDate expiryDate);
+
+    //Recipe
+    @Insert(onConflict = REPLACE)
+    void insertRecipe(Recipe recipe);
+
+    @Query("SELECT * FROM RECIPE")
+    List<Recipe> getAllRecipes();
 }
 

@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
         FragmentManager fragmentManager = getSupportFragmentManager();
         adapter = new VPAdapter(fragmentManager, getLifecycle());
         viewPager2.setAdapter(adapter);
+        viewPager2.setUserInputEnabled(false);
         tabLayout.addTab(tabLayout.newTab().setText("Recipes"));
         tabLayout.addTab(tabLayout.newTab().setText("Inventory"));
         tabLayout.addTab(tabLayout.newTab().setText("Shopping List"));

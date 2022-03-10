@@ -1,6 +1,7 @@
 package com.example.fyp.adapters;
 
 import android.content.Context;
+import android.graphics.BitmapFactory;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,21 +12,19 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.fyp.Models.Recipe;
 import com.example.fyp.R;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerViewAdapterRecipes.ViewHolder> {
 
-    private ArrayList<String> nNames = new ArrayList<>();
-    private ArrayList<Integer> nImages = new ArrayList<>();
-    private Context mContext;
+    private List<Recipe> recipes = new ArrayList<>();
     OnRecipeItemListener onRecipeItemListener;
 
-    public RecyclerViewAdapterRecipes(ArrayList<String> nNames, ArrayList<Integer> nImages, Context mContext, OnRecipeItemListener onRecipeItemListener) {
-        this.nNames = nNames;
-        this.nImages = nImages;
-        this.mContext = mContext;
+    public RecyclerViewAdapterRecipes(List<Recipe> recipes, OnRecipeItemListener onRecipeItemListener) {
+        this.recipes = recipes;
         this.onRecipeItemListener = onRecipeItemListener;
     }
 
@@ -38,14 +37,14 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Glide.with(mContext).asBitmap().load(nImages.get(position)).into(holder.image);
-        holder.name.setText(nNames.get(position));
+        holder.image.setImageBitmap(BitmapFactory.decodeFile(recipes.get(position).getImage()));
+        holder.name.setText(recipes.get(position).getName());
 
     }
 
     @Override
     public int getItemCount() {
-        return nNames.size();
+        return recipes.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{

@@ -37,19 +37,14 @@ import java.util.Objects;
 
 public class ShoppingListFragment extends Fragment implements RecyclerViewAdapterShoppingList.OnShoppingItemListener {
 
-    List<ShoppingList> shoppingList = new ArrayList<>();
-    RecyclerView recyclerView;
-    RecyclerViewAdapterShoppingList adapter;
-    LinearLayoutManager layoutManager;
-    RoomDB database;
-    int mDate, mMonth, mYear;
-    String dateFormatted;
-    List<String> ingredients;
-    ArrayAdapter<String> stringAdapter;
-
-    AutoCompleteTextView input;
-    ImageView enter;
-    ImageView remove;
+    private List<ShoppingList> shoppingList = new ArrayList<>();
+    private RecyclerView recyclerView;
+    private RecyclerViewAdapterShoppingList adapter;
+    private RoomDB database;
+    private String dateFormatted;
+    private List<String> ingredients;
+    private ArrayAdapter<String> stringAdapter;
+    private AutoCompleteTextView input;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -70,8 +65,8 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         }
 
         input = view.findViewById(R.id.input);
-        enter = view.findViewById(R.id.add);
-        remove = view.findViewById(R.id.remove);
+        ImageView enter = view.findViewById(R.id.add);
+        ImageView remove = view.findViewById(R.id.remove);
 
         initRecyclerView();
 
@@ -90,7 +85,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     private void initRecyclerView() {
-        layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = requireView().findViewById(R.id.verticalView);
         recyclerView.setLayoutManager(layoutManager);
         adapter = new RecyclerViewAdapterShoppingList(shoppingList, this);
@@ -110,9 +105,9 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     @Override
     public void onRemoveButtonClick(int position) {
         final Calendar cal = Calendar.getInstance();
-        mDate = cal.get(Calendar.DATE);
-        mMonth = cal.get(Calendar.MONTH);
-        mYear = cal.get(Calendar.YEAR);
+        int mDate = cal.get(Calendar.DATE);
+        int mMonth = cal.get(Calendar.MONTH);
+        int mYear = cal.get(Calendar.YEAR);
         DatePickerDialog datePickerDialog = new DatePickerDialog(this.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePicker datePicker, int year, int month, int date) {

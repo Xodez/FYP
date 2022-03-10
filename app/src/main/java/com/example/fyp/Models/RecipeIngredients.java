@@ -17,6 +17,9 @@ public class RecipeIngredients implements Serializable {
     @ColumnInfo(name = "ingredient")
     Ingredients ingredients;
 
+    @ColumnInfo(name = "count")
+    int count;
+
     public int getID() {
         return ID;
     }

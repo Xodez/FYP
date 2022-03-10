@@ -43,12 +43,7 @@ public class RecyclerViewAdapterShoppingList extends RecyclerView.Adapter<Recycl
         String preUpper = shoppingLists.get(position).getIngredient().getName();
         String postUpper = preUpper.substring(0, 1).toUpperCase() + preUpper.substring(1).toLowerCase();
         holder.name.setText(postUpper);
-        holder.remove.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onShoppingItemListener.onRemoveButtonClick(holder.getAdapterPosition());
-            }
-        });
+        holder.remove.setOnClickListener(view -> onShoppingItemListener.onRemoveButtonClick(holder.getAdapterPosition()));
     }
 
     @Override
