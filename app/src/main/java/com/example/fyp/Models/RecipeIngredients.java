@@ -20,6 +20,20 @@ public class RecipeIngredients implements Serializable {
     @ColumnInfo(name = "count")
     int count;
 
+    public RecipeIngredients(int recipeID, Ingredients ingredients, int count) {
+        this.recipeID = recipeID;
+        this.ingredients = ingredients;
+        this.count = count;
+    }
+
+    public int getCount() {
+        return count;
+    }
+
+    public void setCount(int count) {
+        this.count = count;
+    }
+
     public int getID() {
         return ID;
     }

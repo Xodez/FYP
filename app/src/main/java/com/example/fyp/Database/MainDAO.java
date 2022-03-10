@@ -13,6 +13,8 @@ import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.Models.Recipe;
+import com.example.fyp.Models.RecipeIngredients;
+import com.example.fyp.Models.RecipeWithIngredients;
 import com.example.fyp.Models.ShoppingList;
 
 import java.util.List;
@@ -84,5 +86,16 @@ public interface MainDAO {
 
     @Query("SELECT * FROM RECIPE")
     List<Recipe> getAllRecipes();
+
+    @Delete
+    void deleteRecipe(Recipe recipe);
+
+    @Transaction
+    @Query("SELECT * FROM recipe")
+    List<RecipeWithIngredients> getRecipeWithIngredients();
+
+    //Recipe Ingredients
+    @Insert(onConflict = REPLACE)
+    void insertRecipeIngredient(RecipeIngredients recipeIngredients);
 }
 

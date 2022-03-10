@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -39,11 +40,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.Recipe;
+import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
 import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterGeneric;
@@ -57,6 +60,8 @@ import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Dictionary;
 import java.util.Hashtable;
 import java.util.List;
@@ -83,6 +88,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private Dialog dialog;
     private RecyclerViewAdapterRecipes recipeAdapter;
     private RecyclerView recipeRecyclerView;
+    private int recipePosition;
+    private RecipeWithIngredients recipeWithIngredients;
 
 
     @Override
@@ -100,13 +107,136 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Spinner spinner = (Spinner) view.findViewById((R.id.filterSpinner));
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),
                 android.R.layout.simple_spinner_item, paths);
+        Button addNewRecipe = requireView().findViewById(R.id.addRecipe);
+        Button deleteRecipe = requireView().findViewById(R.id.delete);
+        Button editRecipe = requireView().findViewById(R.id.edit);
+        Button selectRecipe = requireView().findViewById(R.id.select);
 
-        Button addNewRecipe = getView().findViewById(R.id.addRecipe);
+        selectRecipe.setOnClickListener(view1 -> selectRecipe());
         addNewRecipe.setOnClickListener(view1 -> showDialog());
-
+        deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
+        editRecipe.setOnClickListener(view1 -> editRecipe());
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         initRecyclerView();
+    }
+
+    private void selectRecipe() {
+        if (recipePosition != -1) {
+            dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
+            dialog.setContentView(R.layout.layout_recipe);
+
+            recipeWithIngredients = database.mainDao().getRecipeWithIngredients().get(recipePosition);
+            ingredientList = new ArrayList<>();
+            count = new ArrayList<>();
+            instructionList = new ArrayList<>();
+
+            Collections.addAll(instructionList, recipeWithIngredients.getRecipe().getInstructions().split("@"));
+
+            for (int i = 0; i < recipeWithIngredients.getRecipeIngredients().size(); i++) {
+                ingredientList.add(recipeWithIngredients.getRecipeIngredients().get(i).getIngredients().getName());
+                count.add(recipeWithIngredients.getRecipeIngredients().get(i).getCount());
+            }
+
+            Button done = dialog.findViewById(R.id.done);
+            Button cancel = dialog.findViewById(R.id.cancel);
+            TextView enterName = dialog.findViewById(R.id.enterName);
+            TextView enterIngredient = dialog.findViewById(R.id.enterIngredient);
+            TextView enterInstruction = dialog.findViewById(R.id.enterInstruction);
+            recipeImage = dialog.findViewById(R.id.recipeImage);
+
+            enterName.setText(recipeWithIngredients.getRecipe().getName());
+            recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
+
+            LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
+            recyclerView = dialog.findViewById(R.id.ingredientList);
+            recyclerView.setLayoutManager(layoutManager);
+            adapter = new RecyclerViewAdapterGeneric(ingredientList, count, this);
+            recyclerView.setAdapter(adapter);
+
+            LinearLayoutManager layoutManager2 = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
+            recyclerView2 = dialog.findViewById(R.id.instructionList);
+            recyclerView2.setLayoutManager(layoutManager2);
+            adapter2 = new RecyclerViewAdapterInstruction(instructionList, this);
+            recyclerView2.setAdapter(adapter2);
+
+            cancel.setOnClickListener(view -> dialog.cancel());
+
+            dialog.show();
+        } else {
+            makeToast("No recipe selected");
+        }
+    }
+
+    private void editRecipe() {
+        if (recipePosition != -1) {
+            dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
+            dialog.setContentView(R.layout.layout_newrecipeitem);
+
+            recipeWithIngredients = database.mainDao().getRecipeWithIngredients().get(recipePosition);
+            ingredientList = new ArrayList<>();
+            count = new ArrayList<>();
+            instructionList = new ArrayList<>();
+
+            Collections.addAll(instructionList, recipeWithIngredients.getRecipe().getInstructions().split("@"));
+
+            for (int i = 0; i < recipeWithIngredients.getRecipeIngredients().size(); i++) {
+                ingredientList.add(recipeWithIngredients.getRecipeIngredients().get(i).getIngredients().getName());
+                count.add(recipeWithIngredients.getRecipeIngredients().get(i).getCount());
+            }
+
+            Button uploadImage = dialog.findViewById(R.id.uploadImage);
+            Button done = dialog.findViewById(R.id.done);
+            Button cancel = dialog.findViewById(R.id.cancel);
+            enterName = dialog.findViewById(R.id.enterName);
+            enterIngredient = dialog.findViewById(R.id.enterIngredient);
+            enterInstruction = dialog.findViewById(R.id.enterInstruction);
+            ImageView addIngredient = dialog.findViewById(R.id.addIngredient);
+            ImageView addInstruction = dialog.findViewById(R.id.addInstruction);
+            recipeImage = dialog.findViewById(R.id.recipeImage);
+
+            enterName.setText(recipeWithIngredients.getRecipe().getName());
+            recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
+
+            LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
+            recyclerView = dialog.findViewById(R.id.ingredientList);
+            recyclerView.setLayoutManager(layoutManager);
+            adapter = new RecyclerViewAdapterGeneric(ingredientList, count, this);
+            recyclerView.setAdapter(adapter);
+
+            LinearLayoutManager layoutManager2 = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
+            recyclerView2 = dialog.findViewById(R.id.instructionList);
+            recyclerView2.setLayoutManager(layoutManager2);
+            adapter2 = new RecyclerViewAdapterInstruction(instructionList, this);
+            recyclerView2.setAdapter(adapter2);
+
+            addIngredient.setOnClickListener(view -> addIngredient());
+            uploadImage.setOnClickListener(view -> openGallery());
+            addInstruction.setOnClickListener(view -> addInstruction());
+            done.setOnClickListener(view -> {
+                deleteRecipe();
+                askWritePermission();
+            });
+            cancel.setOnClickListener(view -> dialog.cancel());
+
+            dialog.show();
+        } else {
+            makeToast("No recipe selected");
+        }
+    }
+
+    private void deleteRecipe() {
+        if (recipePosition != -1) {
+            database.mainDao().deleteRecipe(recipes.get(recipePosition));
+            File tempFile = new File(recipes.get(recipePosition).getImage());
+            Boolean imageDeleted = tempFile.delete();
+            recipes.clear();
+            recipes.addAll(database.mainDao().getAllRecipes());
+            recipeRecyclerView.setAdapter(recipeAdapter);
+            recipePosition = -1;
+        } else {
+            makeToast("No recipe selected");
+        }
     }
 
     private void showDialog() {
@@ -149,14 +279,14 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     }
 
     private void addRecipe() {
-//        BitmapDrawable imageToSave = (BitmapDrawable) recipeImage.getDrawable();
         Bitmap bitmap = ((BitmapDrawable) recipeImage.getDrawable()).getBitmap();
 
-        String dir = requireContext().getExternalFilesDir(null).getAbsolutePath() +"/LessOfIt/Images/";
+        String dir = requireContext().getExternalFilesDir(null).getAbsolutePath() + "/LessOfIt/Images/";
         File parentFiles = new File(dir);
-        if(!parentFiles.exists()){
+        if (!parentFiles.exists()) {
             parentFiles.mkdirs();
-        };
+        }
+        ;
         String recipeImageName = enterName.getText().toString() + System.currentTimeMillis() + ".jpg";
         File file = new File(dir, recipeImageName);
         try {
@@ -167,10 +297,10 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream);
 
         StringBuilder instructions = new StringBuilder();
-        for (int i = 0; i < instructionList.size(); i++){
-            if (i != instructionList.size() - 1){
+        for (int i = 0; i < instructionList.size(); i++) {
+            if (i != instructionList.size() - 1) {
                 instructions.append(instructionList.get(i)).append("@");
-            }else{
+            } else {
                 instructions.append(instructionList.get(i));
             }
 
@@ -178,6 +308,14 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Recipe temp = new Recipe(enterName.getText().toString(), instructions.toString(), file.getAbsolutePath());
 
         database.mainDao().insertRecipe(temp);
+        int recipeID = database.mainDao().getAllRecipes().get(database.mainDao().getAllRecipes().size() - 1).getID();
+        for (int i = 0; i < ingredientList.size(); i++) {
+            Ingredients ingredient = new Ingredients(ingredientList.get(i));
+            database.mainDao().insertIngredient(ingredient);
+
+            RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, count.get(i));
+            database.mainDao().insertRecipeIngredient(recipeIngredients);
+        }
         recipes.clear();
         recipes.addAll(database.mainDao().getAllRecipes());
         recipeRecyclerView.setAdapter(recipeAdapter);
@@ -243,13 +381,14 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.HORIZONTAL, false);
         recipeRecyclerView = requireView().findViewById(R.id.horizontalView);
         recipeRecyclerView.setLayoutManager(layoutManager);
-        recipeAdapter = new RecyclerViewAdapterRecipes(recipes,this);
+        recipeAdapter = new RecyclerViewAdapterRecipes(recipes, this);
         recipeRecyclerView.setAdapter(recipeAdapter);
     }
 
     @Override
     public void onRecipeClick(int position) {
-
+        recipePosition = position;
+        makeToast("Selected " + recipes.get(position).getName());
     }
 
     private void askWritePermission() {
