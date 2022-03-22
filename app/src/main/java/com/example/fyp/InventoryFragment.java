@@ -137,6 +137,7 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
             database.mainDao().deleteExpiryDate(database.mainDao().getOneExpiryDate(expiryDate).get(0));
         } else {
             database.mainDao().deleteInventoryItem(inventories.get(position).getInventory());
+            database.mainDao().deleteExpiryDate(database.mainDao().getOneExpiryDate(expiryDate).get(0));
         }
         inventories.clear();
         inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
