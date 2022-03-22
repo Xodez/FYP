@@ -44,6 +44,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
+import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.Models.RecipeIngredients;
@@ -72,7 +73,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     public static final int WRITE_EXTERNAL_STORAGE_CODE = 101;
     private RecyclerView recyclerView;
     private RecyclerView recyclerView2;
-    private static final String[] paths = {"By recommended", "By time to make", "By Meal"};
+    private static final String[] paths = {"By Recommended", "By Name", "By Meal"};
     private ImageView recipeImage;
     private EditText enterIngredient;
     private EditText enterInstruction;
@@ -90,6 +91,9 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private RecyclerView recipeRecyclerView;
     private int recipePosition;
     private RecipeWithIngredients recipeWithIngredients;
+    private RecipeAlgorithm ra =  new RecipeAlgorithm();
+    private List<Recipe> filteredRecipes = new ArrayList<>();
+    private List<ExpiryDate> expiryDates = new ArrayList<>();
 
 
     @Override
@@ -116,6 +120,29 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         addNewRecipe.setOnClickListener(view1 -> showDialog());
         deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
         editRecipe.setOnClickListener(view1 -> editRecipe());
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
+                String selectedItem = adapterView.getItemAtPosition(position).toString();
+                if (selectedItem.equals("By Name")){
+                    filteredRecipes.addAll(ra.filterRecipeByName(recipes));
+                    recipes.clear();
+                    recipes.addAll(filteredRecipes);
+                    filteredRecipes.clear();
+                    recipeRecyclerView.setAdapter(recipeAdapter);
+                }
+                else if (selectedItem.equals("By Recommended")){
+                    expiryDates.clear();
+                    expiryDates.addAll(database.mainDao().getAllExpiryDates());
+                    ra.filterRecipeByScore(recipes, expiryDates);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         initRecyclerView();

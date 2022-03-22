@@ -111,7 +111,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         DatePickerDialog datePickerDialog = new DatePickerDialog(this.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePicker datePicker, int year, int month, int date) {
-                dateFormatted = date + "-" + month + "-" + year;
+                dateFormatted = date + "-" + (month + 1) + "-" + year;
                 ExpiryDate expiryDate = new ExpiryDate(dateFormatted, shoppingList.get(position).getIngredient());
                 if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
                     database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());

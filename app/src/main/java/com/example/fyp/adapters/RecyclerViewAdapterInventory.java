@@ -15,6 +15,8 @@ import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.R;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,23 +40,18 @@ public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerV
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerViewAdapterInventory.ViewHolder holder, int position) {
-        ArrayList<String> expiryDates = new ArrayList<>();
+        ArrayList<LocalDate> expiryDates = new ArrayList<>();
         for (ExpiryDate date: inventoryList.get(position).expiryDates){
-            expiryDates.add(date.getExpiryDate());
+            expiryDates.add(LocalDate.parse(date.getExpiryDate(), DateTimeFormatter.ofPattern("d-M-yyyy")));
         }
         Collections.sort(expiryDates);
-        holder.expiryDate.setText(expiryDates.get(0));
+        holder.expiryDate.setText(expiryDates.get(0).format(DateTimeFormatter.ofPattern("d-M-yyyy")));
 
         holder.count.setText(String.valueOf(inventoryList.get(position).getInventory().getAmount()));
         String preUpper = inventoryList.get(position).getInventory().getIngredient().getName();
         String postUpper = preUpper.substring(0, 1).toUpperCase() + preUpper.substring(1).toLowerCase();
         holder.name.setText(postUpper);
-        holder.remove.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                onInventoryItemListener.onRemoveButtonClick(holder.getAdapterPosition());
-            }
-        });
+        holder.remove.setOnClickListener(view -> onInventoryItemListener.onRemoveButtonClick(holder.getAdapterPosition(), expiryDates.get(0).format(DateTimeFormatter.ofPattern("d-M-yyyy"))));
     }
 
     @Override
@@ -80,6 +77,6 @@ public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerV
     }
 
     public interface OnInventoryItemListener {
-        void onRemoveButtonClick(int position);
+        void onRemoveButtonClick(int position, String expiryDate);
     }
 }

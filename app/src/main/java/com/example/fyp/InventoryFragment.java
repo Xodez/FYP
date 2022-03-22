@@ -3,13 +3,12 @@ package com.example.fyp;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.os.Bundle;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -83,19 +82,6 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         recyclerView.setAdapter(adapter);
     }
 
-    @Override
-    public void onRemoveButtonClick(int position) {
-        if (inventories.get(position).getInventory().getAmount() > 1) {
-            database.mainDao().updateInventoryListAmount(-1, inventories.get(position).getInventory().getIngredient());
-            database.mainDao().deleteExpiryDate(database.mainDao().getExpiryDatesOrdered(inventories.get(position).getInventory().getIngredient()).get(0));
-        } else {
-            database.mainDao().deleteInventoryItem(inventories.get(position).getInventory());
-        }
-        inventories.clear();
-        inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
-        recyclerView.setAdapter(adapter);
-    }
-
     public void showDialog() {
         Dialog dialog = new Dialog(this.getContext());
         dialog.setContentView(R.layout.layout_newinventoryitem);
@@ -112,41 +98,48 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         mMonth = cal.get(Calendar.MONTH);
         mYear = cal.get(Calendar.YEAR);
 
-        closeDialogue.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Ingredients ingredient = new Ingredients(ingredientName.getText().toString().toUpperCase());
-                Inventory inventory = new Inventory(ingredient, numberPicker.getValue());
-                ExpiryDate expiryDate = new ExpiryDate(dateText.getText().toString(), ingredient);
-                for (int i = 0; i < numberPicker.getValue(); i++){
-                    database.mainDao().insertExpiryDate(expiryDate);
-                }
-                if (database.mainDao().checkIfInventoryItemExists(ingredient).size() > 0){
-                    database.mainDao().updateInventoryListAmount(numberPicker.getValue(), ingredient);
-                }
-                else{
-                    database.mainDao().insertInventory(inventory);
-                }
-                inventories.clear();
-                inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
-                recyclerView.setAdapter(adapter);
-                dialog.dismiss();
+        closeDialogue.setOnClickListener(view -> {
+            Ingredients ingredient = new Ingredients(ingredientName.getText().toString().toUpperCase());
+            Inventory inventory = new Inventory(ingredient, numberPicker.getValue());
+            ExpiryDate expiryDate = new ExpiryDate(dateText.getText().toString(), ingredient);
+            for (int i = 0; i < numberPicker.getValue(); i++){
+                database.mainDao().insertExpiryDate(expiryDate);
             }
+            if (database.mainDao().checkIfInventoryItemExists(ingredient).size() > 0){
+                database.mainDao().updateInventoryListAmount(numberPicker.getValue(), ingredient);
+            }
+            else{
+                database.mainDao().insertInventory(inventory);
+            }
+            inventories.clear();
+            inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
+            recyclerView.setAdapter(adapter);
+            dialog.dismiss();
         });
 
-        calendar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                DatePickerDialog datePickerDialog = new DatePickerDialog(dialog.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
-                    @Override
-                    public void onDateSet(DatePicker datePicker, int year, int month, int date) {
-                        dateFormatted = date + "-" + month + "-" + year;
-                        dateText.setText(dateFormatted);
-                    }
-                }, mYear, mMonth, mDate);
-                datePickerDialog.show();
-            }
+        calendar.setOnClickListener(view -> {
+            DatePickerDialog datePickerDialog = new DatePickerDialog(dialog.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
+                @Override
+                public void onDateSet(DatePicker datePicker, int year, int month, int date) {
+                    dateFormatted = date + "-" + month + "-" + year;
+                    dateText.setText(dateFormatted);
+                }
+            }, mYear, mMonth, mDate);
+            datePickerDialog.show();
         });
         dialog.show();
+    }
+
+    @Override
+    public void onRemoveButtonClick(int position, String expiryDate) {
+        if (inventories.get(position).getInventory().getAmount() > 1) {
+            database.mainDao().updateInventoryListAmount(-1, inventories.get(position).getInventory().getIngredient());
+            database.mainDao().deleteExpiryDate(database.mainDao().getOneExpiryDate(expiryDate).get(0));
+        } else {
+            database.mainDao().deleteInventoryItem(inventories.get(position).getInventory());
+        }
+        inventories.clear();
+        inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
+        recyclerView.setAdapter(adapter);
     }
 }
