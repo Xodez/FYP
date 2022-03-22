@@ -23,7 +23,7 @@ import java.util.List;
 
 public class RecyclerViewAdapterInventory extends RecyclerView.Adapter<RecyclerViewAdapterInventory.ViewHolder> {
 
-    List<InventoryWithExpiryDates> inventoryList = new ArrayList<>();
+    List<InventoryWithExpiryDates> inventoryList;
     OnInventoryItemListener onInventoryItemListener;
 
     public RecyclerViewAdapterInventory(List<InventoryWithExpiryDates> inventoryList, OnInventoryItemListener onInventoryItemListener) {

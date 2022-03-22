@@ -46,6 +46,7 @@ import android.widget.Toast;
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
@@ -91,9 +92,10 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private RecyclerView recipeRecyclerView;
     private int recipePosition;
     private RecipeWithIngredients recipeWithIngredients;
+    private List<RecipeWithIngredients> recipeWithIngredients2 = new ArrayList<>();
     private RecipeAlgorithm ra =  new RecipeAlgorithm();
     private List<Recipe> filteredRecipes = new ArrayList<>();
-    private List<ExpiryDate> expiryDates = new ArrayList<>();
+    private List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
 
     @Override
@@ -133,8 +135,14 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 }
                 else if (selectedItem.equals("By Recommended")){
                     expiryDates.clear();
-                    expiryDates.addAll(database.mainDao().getAllExpiryDates());
-                    ra.filterRecipeByScore(recipes, expiryDates);
+                    recipeWithIngredients2.clear();
+                    recipeWithIngredients2.addAll(database.mainDao().getRecipeWithIngredients());
+                    expiryDates.addAll(database.mainDao().getInventoriesWithExpiryDates());
+                    filteredRecipes.addAll(ra.filterRecipeByScore(recipeWithIngredients2, expiryDates));
+                    recipes.clear();
+                    recipes.addAll(filteredRecipes);
+                    filteredRecipes.clear();
+                    recipeRecyclerView.setAdapter(recipeAdapter);
                 }
             }
 
