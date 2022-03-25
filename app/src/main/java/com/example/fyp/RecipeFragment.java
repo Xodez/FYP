@@ -161,7 +161,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
             dialog.setContentView(R.layout.layout_recipe);
 
-            recipeWithIngredients = database.mainDao().getRecipeWithIngredients().get(recipePosition);
+            recipeWithIngredients = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName()).get(0);
             ingredientList = new ArrayList<>();
             count = new ArrayList<>();
             instructionList = new ArrayList<>();
@@ -208,7 +208,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
             dialog.setContentView(R.layout.layout_newrecipeitem);
 
-            recipeWithIngredients = database.mainDao().getRecipeWithIngredients().get(recipePosition);
+            recipeWithIngredients = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName()).get(0);
             ingredientList = new ArrayList<>();
             count = new ArrayList<>();
             instructionList = new ArrayList<>();

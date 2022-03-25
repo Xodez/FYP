@@ -97,6 +97,10 @@ public interface MainDAO {
     @Query("SELECT * FROM recipe")
     List<RecipeWithIngredients> getRecipeWithIngredients();
 
+    @Transaction
+    @Query("SELECT * FROM recipe WHERE name = :name")
+    List<RecipeWithIngredients> getRecipeWithIngredientsByName(String name);
+
     //Recipe Ingredients
     @Insert(onConflict = REPLACE)
     void insertRecipeIngredient(RecipeIngredients recipeIngredients);
