@@ -3,11 +3,13 @@ package com.example.fyp;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.os.Bundle;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,6 +20,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.NumberPicker;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.ExpiryDate;
@@ -58,12 +61,7 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         inventories = database.mainDao().getInventoriesWithExpiryDates();
         input = view.findViewById(R.id.input);
 
-        input.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                showDialog();
-            }
-        });
+        input.setOnClickListener(view1 -> showDialog());
 
         initRecyclerView();
     }
@@ -99,29 +97,32 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         mYear = cal.get(Calendar.YEAR);
 
         closeDialogue.setOnClickListener(view -> {
-            Ingredients ingredient = new Ingredients(ingredientName.getText().toString().toUpperCase());
-            Inventory inventory = new Inventory(ingredient, numberPicker.getValue());
-            ExpiryDate expiryDate = new ExpiryDate(dateText.getText().toString(), ingredient);
-            for (int i = 0; i < numberPicker.getValue(); i++){
-                database.mainDao().insertExpiryDate(expiryDate);
+            if (ingredientName.getText() == null || dateText.getText() == null || ingredientName.getText().toString().equals("") || dateText.getText().toString().equals("")) {
+                makeToast("Please fill in all fields");
+            } else {
+                Ingredients ingredient = new Ingredients(ingredientName.getText().toString().toUpperCase());
+                Inventory inventory = new Inventory(ingredient, numberPicker.getValue());
+                ExpiryDate expiryDate = new ExpiryDate(dateText.getText().toString(), ingredient);
+                for (int i = 0; i < numberPicker.getValue(); i++) {
+                    database.mainDao().insertExpiryDate(expiryDate);
+                }
+                if (database.mainDao().checkIfInventoryItemExists(ingredient).size() > 0) {
+                    database.mainDao().updateInventoryListAmount(numberPicker.getValue(), ingredient);
+                } else {
+                    database.mainDao().insertInventory(inventory);
+                }
+                inventories.clear();
+                inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
+                recyclerView.setAdapter(adapter);
+                dialog.dismiss();
             }
-            if (database.mainDao().checkIfInventoryItemExists(ingredient).size() > 0){
-                database.mainDao().updateInventoryListAmount(numberPicker.getValue(), ingredient);
-            }
-            else{
-                database.mainDao().insertInventory(inventory);
-            }
-            inventories.clear();
-            inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
-            recyclerView.setAdapter(adapter);
-            dialog.dismiss();
         });
 
         calendar.setOnClickListener(view -> {
             DatePickerDialog datePickerDialog = new DatePickerDialog(dialog.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
                 @Override
                 public void onDateSet(DatePicker datePicker, int year, int month, int date) {
-                    dateFormatted = date + "-" + month + "-" + year;
+                    dateFormatted = date + "-" + (month + 1) + "-" + year;
                     dateText.setText(dateFormatted);
                 }
             }, mYear, mMonth, mDate);
@@ -142,5 +143,13 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         inventories.clear();
         inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());
         recyclerView.setAdapter(adapter);
+    }
+
+    Toast t;
+
+    public void makeToast(String s) {
+        if (t != null) t.cancel();
+        t = Toast.makeText(requireContext().getApplicationContext(), s, Toast.LENGTH_SHORT);
+        t.show();
     }
 }

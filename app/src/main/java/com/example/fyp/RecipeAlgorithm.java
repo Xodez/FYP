@@ -30,7 +30,7 @@ public class RecipeAlgorithm {
     public List<Recipe> filterRecipeByScore(List<RecipeWithIngredients> recipes, List<InventoryWithExpiryDates> exp) {
         ArrayList<LocalDate> tempExpiryDates = new ArrayList<>();
         HashMap<String, String[]> valuedIngredients = new HashMap<>();
-        LinkedHashMap<Recipe, Integer> recipesWithScores = new LinkedHashMap<>();
+        LinkedHashMap<Recipe, Float> recipesWithScores = new LinkedHashMap<>();
 
         // Giving value to ingredients
         for (InventoryWithExpiryDates item : exp) {
@@ -44,35 +44,38 @@ public class RecipeAlgorithm {
 
         // Giving recipes scores
         Boolean valid = false;
+        // First for loop goes through recipes, second for loop goes through selected recipe ingredients, third for loop goes through inventory ingredients to find if ingredient is present
         for (RecipeWithIngredients recipe : recipes) {
             for (RecipeIngredients ingredients : recipe.getRecipeIngredients()) {
                 for (String ingredientName : valuedIngredients.keySet()) {
                     valid = false;
                     if (ingredientName.equals(ingredients.getIngredients().getName()) && Integer.parseInt(Objects.requireNonNull(valuedIngredients.get(ingredientName))[0]) >= ingredients.getCount()) {
                         valid = true;
-                        if (!recipesWithScores.containsKey(recipe.getRecipe())){
-                            recipesWithScores.put(recipe.getRecipe(), Integer.parseInt(Objects.requireNonNull(valuedIngredients.get(ingredientName))[1]));
-                        }
-                        else {
-                            recipesWithScores.put(recipe.getRecipe(), recipesWithScores.get(recipe.getRecipe()) + Integer.parseInt(Objects.requireNonNull(valuedIngredients.get(ingredientName))[1]));
+                        if (!recipesWithScores.containsKey(recipe.getRecipe())) {
+                            // [Recipe, Ingredient score / Amount of ingredients / Amount of said ingredient
+                            recipesWithScores.put(recipe.getRecipe(), (((float) Integer.parseInt(Objects.requireNonNull(valuedIngredients.get(ingredientName))[1]) / (float) recipe.getRecipeIngredients().size()) / (float) Integer.parseInt(Objects.requireNonNull(valuedIngredients.get((ingredientName)))[0])));
+                        } else {
+                            // [Recipe, Last score + Ingredient score / Amount of ingredients / Amount of said ingredient
+                            recipesWithScores.put(recipe.getRecipe(), recipesWithScores.get(recipe.getRecipe()) + (((float) Integer.parseInt(Objects.requireNonNull(valuedIngredients.get(ingredientName))[1]) / (float) recipe.getRecipeIngredients().size()) / (float) Integer.parseInt(Objects.requireNonNull(valuedIngredients.get((ingredientName)))[0])));
                         }
                         break;
                     }
                 }
-                if (valid){
+                if (valid) {
                     continue;
                 }
-                recipesWithScores.put(recipe.getRecipe(), 99999999);
+                recipesWithScores.put(recipe.getRecipe(), (float) 99999999);
                 break;
             }
         }
 
         // Sorting recipes
-        List<Map.Entry<Recipe, Integer>> sortedRecipes = new ArrayList<>(recipesWithScores.entrySet());
-        sortedRecipes.sort(new Comparator<Map.Entry<Recipe, Integer>>() {
+        List<Map.Entry<Recipe, Float>> sortedRecipes = new ArrayList<>(recipesWithScores.entrySet());
+        sortedRecipes.sort(new Comparator<Map.Entry<Recipe, Float>>() {
             @Override
-            public int compare(Map.Entry<Recipe, Integer> one, Map.Entry<Recipe, Integer> two) {
-                return one.getValue() - two.getValue();
+            public int compare(Map.Entry<Recipe, Float> one, Map.Entry<Recipe, Float> two) {
+                Float comparator = one.getValue() - two.getValue();
+                return comparator.intValue();
             }
 
             @Override
@@ -82,7 +85,7 @@ public class RecipeAlgorithm {
         });
 
         List<Recipe> recipesToReturn = new ArrayList<>();
-        for (Map.Entry<Recipe, Integer> entry: sortedRecipes) {
+        for (Map.Entry<Recipe, Float> entry : sortedRecipes) {
             recipesToReturn.add(entry.getKey());
         }
 

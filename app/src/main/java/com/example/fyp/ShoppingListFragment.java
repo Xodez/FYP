@@ -60,7 +60,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         database = RoomDB.getInstance(this.getContext());
         shoppingList = database.mainDao().getAllShoppingListItems();
         ingredients = new ArrayList<>();
-        for (String i : database.mainDao().getAllIngredientNames()){
+        for (String i : database.mainDao().getAllIngredientNames()) {
             ingredients.add(i.toLowerCase());
         }
 
@@ -154,7 +154,7 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
             recyclerView.setAdapter(adapter);
             stringAdapter.clear();
             ingredients.clear();
-            for (String i : database.mainDao().getAllIngredientNames()){
+            for (String i : database.mainDao().getAllIngredientNames()) {
                 ingredients.add(i.toLowerCase());
             }
             stringAdapter.addAll(ingredients);
