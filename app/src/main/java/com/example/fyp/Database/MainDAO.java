@@ -61,6 +61,10 @@ public interface MainDAO {
     @Query("SELECT * FROM inventory")
     List<InventoryWithExpiryDates> getInventoriesWithExpiryDates();
 
+    @Transaction
+    @Query("SELECT * FROM inventory WHERE :ingredients = ingredient")
+    List<InventoryWithExpiryDates> getOneInventoryItem(Ingredients ingredients);
+
     @Query("UPDATE inventory SET amount = amount + :amount WHERE :ingredient = ingredient")
     void updateInventoryListAmount(int amount, Ingredients ingredient);
 

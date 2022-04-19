@@ -52,7 +52,9 @@ import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
 import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterGeneric;
+import com.example.fyp.adapters.RecyclerViewAdapterGenericSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterInstruction;
+import com.example.fyp.adapters.RecyclerViewAdapterInstructionSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
 import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
 
@@ -69,7 +71,8 @@ import java.util.Hashtable;
 import java.util.List;
 import java.util.Objects;
 
-public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener {
+public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener,
+        RecyclerViewAdapterInstructionSelect.OnItemListener, RecyclerViewAdapterGenericSelect.OnIngredientItemListener {
 
     public static final int WRITE_EXTERNAL_STORAGE_CODE = 101;
     private RecyclerView recyclerView;
@@ -92,10 +95,10 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private RecyclerView recipeRecyclerView;
     private int recipePosition;
     private RecipeWithIngredients recipeWithIngredients;
-    private List<RecipeWithIngredients> recipeWithIngredients2 = new ArrayList<>();
-    private RecipeAlgorithm ra =  new RecipeAlgorithm();
-    private List<Recipe> filteredRecipes = new ArrayList<>();
-    private List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
+    private final List<RecipeWithIngredients> recipeWithIngredients2 = new ArrayList<>();
+    private final RecipeAlgorithm ra = new RecipeAlgorithm();
+    private final List<Recipe> filteredRecipes = new ArrayList<>();
+    private final List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
 
     @Override
@@ -126,14 +129,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
                 String selectedItem = adapterView.getItemAtPosition(position).toString();
-                if (selectedItem.equals("By Name")){
+                if (selectedItem.equals("By Name")) {
                     filteredRecipes.addAll(ra.filterRecipeByName(recipes));
                     recipes.clear();
                     recipes.addAll(filteredRecipes);
                     filteredRecipes.clear();
                     recipeRecyclerView.setAdapter(recipeAdapter);
-                }
-                else if (selectedItem.equals("By Recommended")){
+                } else if (selectedItem.equals("By Recommended")) {
                     expiryDates.clear();
                     recipeWithIngredients2.clear();
                     recipeWithIngredients2.addAll(database.mainDao().getRecipeWithIngredients());
@@ -163,6 +165,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
             recipeWithIngredients = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName()).get(0);
             ingredientList = new ArrayList<>();
+            List<Ingredients> ingredientList2 = new ArrayList<>();
             count = new ArrayList<>();
             instructionList = new ArrayList<>();
 
@@ -170,14 +173,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
             for (int i = 0; i < recipeWithIngredients.getRecipeIngredients().size(); i++) {
                 ingredientList.add(recipeWithIngredients.getRecipeIngredients().get(i).getIngredients().getName());
+                ingredientList2.add(recipeWithIngredients.getRecipeIngredients().get(i).getIngredients());
                 count.add(recipeWithIngredients.getRecipeIngredients().get(i).getCount());
             }
 
             Button done = dialog.findViewById(R.id.done);
             Button cancel = dialog.findViewById(R.id.cancel);
             TextView enterName = dialog.findViewById(R.id.enterName);
-            TextView enterIngredient = dialog.findViewById(R.id.enterIngredient);
-            TextView enterInstruction = dialog.findViewById(R.id.enterInstruction);
             recipeImage = dialog.findViewById(R.id.recipeImage);
 
             enterName.setText(recipeWithIngredients.getRecipe().getName());
@@ -186,20 +188,49 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
             recyclerView = dialog.findViewById(R.id.ingredientList);
             recyclerView.setLayoutManager(layoutManager);
-            adapter = new RecyclerViewAdapterGeneric(ingredientList, count, this);
+            RecyclerViewAdapterGenericSelect adapter = new RecyclerViewAdapterGenericSelect(ingredientList, count, this);
             recyclerView.setAdapter(adapter);
 
             LinearLayoutManager layoutManager2 = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
             recyclerView2 = dialog.findViewById(R.id.instructionList);
             recyclerView2.setLayoutManager(layoutManager2);
-            adapter2 = new RecyclerViewAdapterInstruction(instructionList, this);
+            RecyclerViewAdapterInstructionSelect adapter2 = new RecyclerViewAdapterInstructionSelect(instructionList, this);
             recyclerView2.setAdapter(adapter2);
 
             cancel.setOnClickListener(view -> dialog.cancel());
+            done.setOnClickListener(view -> finishedCookingRecipe(ingredientList2, count));
 
             dialog.show();
         } else {
             makeToast("No recipe selected");
+        }
+    }
+
+    private void finishedCookingRecipe(List<Ingredients> ingredientList, ArrayList<Integer> count) {
+        int i = 0;
+        boolean validRecipe = true;
+        for (Ingredients ingredient : ingredientList) {
+            List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);
+            if (temp.size() == 0 || temp.get(0).getInventory().getAmount() < count.get(i)){
+                validRecipe = false;
+                break;
+            }
+        }
+        if (validRecipe) {
+            for (Ingredients ingredient : ingredientList) {
+                List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);
+                if (temp.get(0).getInventory().getAmount() == count.get(i)) {
+                    database.mainDao().deleteInventoryItem(temp.get(0).getInventory());
+                } else {
+                    database.mainDao().updateInventoryListAmount(-count.get(i), ingredient);
+                }
+                i++;
+            }
+            dialog.dismiss();
+            makeToast("Finished Recipe!");
+        }
+        else{
+            makeToast("Recipe does not have the required ingredients");
         }
     }
 
