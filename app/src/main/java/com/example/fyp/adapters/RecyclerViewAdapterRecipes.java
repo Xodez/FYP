@@ -1,7 +1,10 @@
 package com.example.fyp.adapters;
 
+import android.app.Activity;
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +18,10 @@ import com.bumptech.glide.Glide;
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.R;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,10 +29,12 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
 
     private List<Recipe> recipes = new ArrayList<>();
     OnRecipeItemListener onRecipeItemListener;
+    Activity activity;
 
-    public RecyclerViewAdapterRecipes(List<Recipe> recipes, OnRecipeItemListener onRecipeItemListener) {
+    public RecyclerViewAdapterRecipes(List<Recipe> recipes, OnRecipeItemListener onRecipeItemListener, Activity activity) {
         this.recipes = recipes;
         this.onRecipeItemListener = onRecipeItemListener;
+        this.activity = activity;
     }
 
     @NonNull
@@ -37,7 +46,30 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.image.setImageBitmap(BitmapFactory.decodeFile(recipes.get(position).getImage()));
+        if(recipes.get(position).getImage().startsWith("http://") || recipes.get(position).getImage().startsWith("https://")){
+            new Thread(() -> {
+                InputStream in;
+                Drawable d = null;
+                try {
+                    in = (InputStream) new URL(recipes.get(position).getImage()).getContent();
+                    d = Drawable.createFromStream(in, "src image");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                Drawable finalD = d;
+                activity.runOnUiThread(() -> {
+                    if (finalD != null) {
+                        holder.image.setImageDrawable(finalD);
+                    }
+                    else{
+                        holder.image.setImageResource(R.drawable.ic_launcher_foreground);
+                    }
+                });
+            }).start();
+        }
+        else {
+            holder.image.setImageBitmap(BitmapFactory.decodeFile(recipes.get(position).getImage()));
+        }
         holder.name.setText(recipes.get(position).getName());
 
     }

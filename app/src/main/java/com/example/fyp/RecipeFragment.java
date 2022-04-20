@@ -1,11 +1,8 @@
 package com.example.fyp;
 
-import static android.content.ContentValues.TAG;
-
 import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -13,27 +10,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Bundle;
-
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.ActivityResultRegistry;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -43,33 +23,48 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.fyp.Database.RoomDB;
-import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
 import com.example.fyp.Models.InventoryWithExpiryDates;
+import com.example.fyp.Models.Meal;
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
-import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterGeneric;
 import com.example.fyp.adapters.RecyclerViewAdapterGenericSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterInstruction;
 import com.example.fyp.adapters.RecyclerViewAdapterInstructionSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
-import com.example.fyp.adapters.RecyclerViewAdapterShoppingList;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Dictionary;
-import java.util.Hashtable;
 import java.util.List;
-import java.util.Objects;
+import java.util.Random;
 
 public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener,
         RecyclerViewAdapterInstructionSelect.OnItemListener, RecyclerViewAdapterGenericSelect.OnIngredientItemListener {
@@ -100,7 +95,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private final List<Recipe> filteredRecipes = new ArrayList<>();
     private final List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -120,11 +114,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Button deleteRecipe = requireView().findViewById(R.id.delete);
         Button editRecipe = requireView().findViewById(R.id.edit);
         Button selectRecipe = requireView().findViewById(R.id.select);
+        Button addRecipe = requireView().findViewById(R.id.testAddRecipe);
 
         selectRecipe.setOnClickListener(view1 -> selectRecipe());
         addNewRecipe.setOnClickListener(view1 -> showDialog());
         deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
         editRecipe.setOnClickListener(view1 -> editRecipe());
+        addRecipe.setOnClickListener(view1 -> getRecipe());
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
@@ -157,6 +153,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         spinner.setAdapter(adapter);
         initRecyclerView();
     }
+
 
     private void selectRecipe() {
         if (recipePosition != -1) {
@@ -211,7 +208,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         boolean validRecipe = true;
         for (Ingredients ingredient : ingredientList) {
             List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);
-            if (temp.size() == 0 || temp.get(0).getInventory().getAmount() < count.get(i)){
+            if (temp.size() == 0 || temp.get(0).getInventory().getAmount() < count.get(i)) {
                 validRecipe = false;
                 break;
             }
@@ -228,8 +225,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             }
             dialog.dismiss();
             makeToast("Finished Recipe!");
-        }
-        else{
+        } else {
             makeToast("Recipe does not have the required ingredients");
         }
     }
@@ -447,7 +443,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.HORIZONTAL, false);
         recipeRecyclerView = requireView().findViewById(R.id.horizontalView);
         recipeRecyclerView.setLayoutManager(layoutManager);
-        recipeAdapter = new RecyclerViewAdapterRecipes(recipes, this);
+        recipeAdapter = new RecyclerViewAdapterRecipes(recipes, this, getActivity());
         recipeRecyclerView.setAdapter(recipeAdapter);
     }
 
@@ -483,17 +479,77 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         }
     }
 
+    @Override
+    public void onRemoveInstructionButtonClick(int position) {
+        instructionList.remove(instructionList.get(position));
+        recyclerView2.setAdapter(adapter2);
+    }
+
+    public void getRecipe() {
+        new Thread(() -> {
+            //doInBackground
+            BufferedReader reader;
+            String line;
+            StringBuffer responseContent = new StringBuffer();
+            try {
+                URL url = new URL("https://www.themealdb.com/api/json/v1/1/random.php");
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
+
+                int status = connection.getResponseCode();
+
+                if (status > 299) {
+                    reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
+                    while ((line = reader.readLine()) != null) {
+                        responseContent.append(line);
+                    }
+                    reader.close();
+                } else {
+                    reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    while ((line = reader.readLine()) != null) {
+                        responseContent.append(line);
+                    }
+                    reader.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            requireActivity().runOnUiThread(() -> {
+                Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
+                JsonObject json = JsonParser.parseString(responseContent.toString()).getAsJsonObject();
+
+                Meal meal = gson.fromJson(json.get("meals").getAsJsonArray().get(0).toString(), Meal.class);
+
+                String parsedInstructions = meal.getStrInstructions().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\\.", "@");
+                Recipe recipe = new Recipe(meal.getStrMeal(), parsedInstructions, meal.getStrMealThumb());
+                database.mainDao().insertRecipe(recipe);
+                int recipeID = database.mainDao().getAllRecipes().get(database.mainDao().getAllRecipes().size() - 1).getID();
+                for (String item : meal.getAllIngredients()) {
+                    if (item.equals("")){
+                        break;
+                    }
+                    Ingredients ingredient = new Ingredients(item);
+                    database.mainDao().insertIngredient(ingredient);
+
+                    RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, (int) (Math.random() * (4 - 1)) +1);
+                    database.mainDao().insertRecipeIngredient(recipeIngredients);
+                }
+                recipes.clear();
+                recipes.addAll(database.mainDao().getAllRecipes());
+                recipeRecyclerView.setAdapter(recipeAdapter);
+            });
+        }).start();
+
+    }
+
     Toast t;
 
     public void makeToast(String s) {
         if (t != null) t.cancel();
         t = Toast.makeText(requireContext().getApplicationContext(), s, Toast.LENGTH_SHORT);
         t.show();
-    }
-
-    @Override
-    public void onRemoveInstructionButtonClick(int position) {
-        instructionList.remove(instructionList.get(position));
-        recyclerView2.setAdapter(adapter2);
     }
 }
