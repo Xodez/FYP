@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -58,6 +59,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -111,7 +113,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         database = RoomDB.getInstance(this.getContext());
         recipes = database.mainDao().getAllRecipes();
         Spinner spinner = (Spinner) view.findViewById((R.id.filterSpinner));
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getContext(),
                 R.layout.simple_spinner_item_custom, paths);
 
         EditText searchRecipeText = requireView().findViewById(R.id.recipeSearch);
@@ -122,7 +124,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Button addRecipe = requireView().findViewById(R.id.addBrowserRecipe);
 
         selectRecipe.setOnClickListener(view1 -> selectRecipe());
-        addNewRecipe.setOnClickListener(view1 -> showDialog());
+        addNewRecipe.setOnClickListener(view1 -> addCustomRecipe());
         deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
         editRecipe.setOnClickListener(view1 -> editRecipe());
         addRecipe.setOnClickListener(view1 -> searchRecipe(searchRecipeText.getText().toString()));
@@ -184,6 +186,30 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             recipeImage = dialog.findViewById(R.id.recipeImage);
 
             enterName.setText(recipeWithIngredients.getRecipe().getName());
+            if(recipeWithIngredients.getRecipe().getImage().startsWith("http://") || recipeWithIngredients.getRecipe().getImage().startsWith("https://")){
+                new Thread(() -> {
+                    InputStream in;
+                    Drawable d = null;
+                    try {
+                        in = (InputStream) new URL(recipeWithIngredients.getRecipe().getImage()).getContent();
+                        d = Drawable.createFromStream(in, "src image");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Drawable finalD = d;
+                    requireActivity().runOnUiThread(() -> {
+                        if (finalD != null) {
+                            recipeImage.setImageDrawable(finalD);
+                        }
+                        else{
+                            recipeImage.setImageResource(R.drawable.ic_launcher_foreground);
+                        }
+                    });
+                }).start();
+            }
+            else {
+                recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
+            }
             recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
 
             LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
@@ -305,7 +331,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         }
     }
 
-    private void showDialog() {
+    private void addCustomRecipe() {
         dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
         dialog.setContentView(R.layout.layout_newrecipeitem);
 
@@ -352,7 +378,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         if (!parentFiles.exists()) {
             parentFiles.mkdirs();
         }
-        ;
         String recipeImageName = enterName.getText().toString() + System.currentTimeMillis() + ".jpg";
         File file = new File(dir, recipeImageName);
         try {
