@@ -33,8 +33,12 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Test"
-                    android:textSize="20sp"></TextView>
+                    android:text="Recipe"
+                    android:autoSizeTextType="uniform"
+                    android:gravity="center"
+                    android:paddingStart="4sp"
+                    android:paddingEnd="4sp"
+                    />
             </LinearLayout>
 
         </androidx.cardview.widget.CardView>

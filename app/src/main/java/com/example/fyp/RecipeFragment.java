@@ -49,6 +49,7 @@ import com.example.fyp.adapters.RecyclerViewAdapterInstructionSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -64,6 +65,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener,
@@ -95,6 +97,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private final List<Recipe> filteredRecipes = new ArrayList<>();
     private final List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -110,17 +113,20 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Spinner spinner = (Spinner) view.findViewById((R.id.filterSpinner));
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),
                 android.R.layout.simple_spinner_item, paths);
+
+        EditText searchRecipeText = requireView().findViewById(R.id.recipeSearch);
         Button addNewRecipe = requireView().findViewById(R.id.addRecipe);
         Button deleteRecipe = requireView().findViewById(R.id.delete);
         Button editRecipe = requireView().findViewById(R.id.edit);
         Button selectRecipe = requireView().findViewById(R.id.select);
-        Button addRecipe = requireView().findViewById(R.id.testAddRecipe);
+        Button addRecipe = requireView().findViewById(R.id.addBrowserRecipe);
 
         selectRecipe.setOnClickListener(view1 -> selectRecipe());
         addNewRecipe.setOnClickListener(view1 -> showDialog());
         deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
         editRecipe.setOnClickListener(view1 -> editRecipe());
-        addRecipe.setOnClickListener(view1 -> getRecipe());
+//        addRecipe.setOnClickListener(view1 -> getRecipe("52772"));
+        addRecipe.setOnClickListener(view1 -> searchRecipe(searchRecipeText.getText().toString()));
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
@@ -153,7 +159,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         spinner.setAdapter(adapter);
         initRecyclerView();
     }
-
 
     private void selectRecipe() {
         if (recipePosition != -1) {
@@ -485,14 +490,14 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         recyclerView2.setAdapter(adapter2);
     }
 
-    public void getRecipe() {
+    public void getRecipe(String ID) {
         new Thread(() -> {
             //doInBackground
             BufferedReader reader;
             String line;
             StringBuffer responseContent = new StringBuffer();
             try {
-                URL url = new URL("https://www.themealdb.com/api/json/v1/1/random.php");
+                URL url = new URL("https://www.themealdb.com/api/json/v1/1/lookup.php?i=" + ID);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
                 connection.setRequestMethod("GET");
@@ -503,17 +508,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
                 if (status > 299) {
                     reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-                    while ((line = reader.readLine()) != null) {
-                        responseContent.append(line);
-                    }
-                    reader.close();
                 } else {
                     reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    while ((line = reader.readLine()) != null) {
-                        responseContent.append(line);
-                    }
-                    reader.close();
                 }
+                while ((line = reader.readLine()) != null) {
+                    responseContent.append(line);
+                }
+                reader.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -528,13 +529,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 database.mainDao().insertRecipe(recipe);
                 int recipeID = database.mainDao().getAllRecipes().get(database.mainDao().getAllRecipes().size() - 1).getID();
                 for (String item : meal.getAllIngredients()) {
-                    if (item.equals("")){
+                    if (item.equals("")) {
                         break;
                     }
                     Ingredients ingredient = new Ingredients(item);
                     database.mainDao().insertIngredient(ingredient);
 
-                    RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, (int) (Math.random() * (4 - 1)) +1);
+                    RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, (int) (Math.random() * (4 - 1)) + 1);
                     database.mainDao().insertRecipeIngredient(recipeIngredients);
                 }
                 recipes.clear();
@@ -543,6 +544,51 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             });
         }).start();
 
+    }
+
+    private void searchRecipe(String recipeName) {
+        if (recipeName != null) {
+            new Thread(() -> {
+                //doInBackground
+                BufferedReader reader;
+                String line;
+                StringBuffer responseContent = new StringBuffer();
+                try {
+                    URL url = new URL("https://www.themealdb.com/api/json/v1/1/filter.php?i=" + recipeName.replace(" ", "_"));
+                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+                    connection.setRequestMethod("GET");
+                    connection.setConnectTimeout(5000);
+                    connection.setReadTimeout(5000);
+
+                    int status = connection.getResponseCode();
+
+                    if (status > 299) {
+                        reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
+                    } else {
+                        reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    }
+                    while ((line = reader.readLine()) != null) {
+                        responseContent.append(line);
+                    }
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                requireActivity().runOnUiThread(() -> {
+                    if (JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").isJsonNull()){
+                        makeToast("No recipes found with that ingredient");
+                    }else {
+                        for (int i = 0; i < JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").getAsJsonArray().size(); i++) {
+                            String mealId = JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").getAsJsonArray().get(i).getAsJsonObject().get("idMeal").getAsString();
+                            getRecipe(mealId);
+                        }
+                    }
+                });
+            }).start();
+        } else {
+            makeToast("Please enter a recipe ingredient");
+        }
     }
 
     Toast t;
