@@ -112,7 +112,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         recipes = database.mainDao().getAllRecipes();
         Spinner spinner = (Spinner) view.findViewById((R.id.filterSpinner));
         ArrayAdapter<String> adapter = new ArrayAdapter<String>(getContext(),
-                android.R.layout.simple_spinner_item, paths);
+                R.layout.simple_spinner_item_custom, paths);
 
         EditText searchRecipeText = requireView().findViewById(R.id.recipeSearch);
         Button addNewRecipe = requireView().findViewById(R.id.addRecipe);
@@ -125,7 +125,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         addNewRecipe.setOnClickListener(view1 -> showDialog());
         deleteRecipe.setOnClickListener(view1 -> deleteRecipe());
         editRecipe.setOnClickListener(view1 -> editRecipe());
-//        addRecipe.setOnClickListener(view1 -> getRecipe("52772"));
         addRecipe.setOnClickListener(view1 -> searchRecipe(searchRecipeText.getText().toString()));
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
