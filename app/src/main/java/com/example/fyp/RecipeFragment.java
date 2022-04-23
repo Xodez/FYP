@@ -76,7 +76,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     public static final int WRITE_EXTERNAL_STORAGE_CODE = 101;
     private RecyclerView recyclerView;
     private RecyclerView recyclerView2;
-    private static final String[] paths = {"By Recommended", "By Name", "By Meal"};
+    private static final String[] paths = {"By Recommended", "By Name"};
     private ImageView recipeImage;
     private EditText enterIngredient;
     private EditText enterInstruction;

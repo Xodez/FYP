@@ -14,7 +14,8 @@
             android:layout_height="150dp"
             android:layout_margin="20dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="10dp">
+            app:cardElevation="10dp"
+            app:cardBackgroundColor="#FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -38,6 +39,7 @@
                     android:gravity="center"
                     android:paddingStart="4sp"
                     android:paddingEnd="4sp"
+                    android:textColor="@color/primaryTextColor"
                     />
             </LinearLayout>
 

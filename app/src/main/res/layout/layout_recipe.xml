@@ -62,7 +62,8 @@
             android:id="@+id/ingredientList"
             android:layout_width="match_parent"
             android:layout_height="300dp"
-            android:layout_below="@+id/enterableLayout" />
+            android:layout_below="@+id/enterableLayout"
+            />
 
         <RelativeLayout
             android:id="@+id/relative2"
@@ -115,10 +116,28 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <Button
-                android:id="@+id/cancel"
+                android:id="@+id/addMissing"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignStart="@+id/done"
+                android:layout_centerInParent="true"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginEnd="32dp"
+                android:layout_marginBottom="16dp"
+                android:text="Add missing ingredients"
+                android:textColor="@color/primaryTextColor"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/done"
+                app:layout_constraintStart_toEndOf="@id/cancel"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <Button
+                android:id="@+id/cancel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignStart="@+id/addMissing"
                 android:layout_centerInParent="true"
                 android:layout_centerVertical="true"
                 android:layout_marginStart="32dp"
