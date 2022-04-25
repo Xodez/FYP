@@ -48,6 +48,13 @@ public class MainActivity extends AppCompatActivity {
                         inventoryFragment.refresh();
                     }
                 }
+                if (tab.getPosition() == 2) {
+                    Fragment fragment = fragmentManager.findFragmentByTag("f" + viewPager2.getCurrentItem());
+                    if (fragment != null) {
+                        ShoppingListFragment shoppingListFragment = (ShoppingListFragment) fragment;
+                        shoppingListFragment.refresh();
+                    }
+                }
             }
 
             @Override

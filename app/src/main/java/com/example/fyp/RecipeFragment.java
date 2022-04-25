@@ -43,6 +43,7 @@ import com.example.fyp.Models.Meal;
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
+import com.example.fyp.Models.ShoppingList;
 import com.example.fyp.adapters.RecyclerViewAdapterGeneric;
 import com.example.fyp.adapters.RecyclerViewAdapterGenericSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterInstruction;
@@ -181,6 +182,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             }
 
             Button done = dialog.findViewById(R.id.done);
+            Button addIngredients = dialog.findViewById(R.id.addMissing);
             Button cancel = dialog.findViewById(R.id.cancel);
             TextView enterName = dialog.findViewById(R.id.enterName);
             recipeImage = dialog.findViewById(R.id.recipeImage);
@@ -226,11 +228,29 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
             cancel.setOnClickListener(view -> dialog.cancel());
             done.setOnClickListener(view -> finishedCookingRecipe(ingredientList2, count));
+            addIngredients.setOnClickListener(view -> addMissingIngredients(ingredientList2, count));
 
             dialog.show();
         } else {
             makeToast("No recipe selected");
         }
+    }
+
+    private void addMissingIngredients(List<Ingredients> ingredientList2, ArrayList<Integer> count) {
+        int i = 0;
+        for (Ingredients ingredient: ingredientList2) {
+            if(database.mainDao().getOneInventoryItem(ingredient).size() == 0){
+                ShoppingList shoppingList = new ShoppingList(ingredient.getName(), ingredient, count.get(i));
+                database.mainDao().insertShoppingList(shoppingList);
+            }
+            else if(database.mainDao().getOneInventoryItem(ingredient).get(0).getInventory().getAmount() < count.get(i)){
+                ShoppingList shoppingList = new ShoppingList(ingredient.getName(), ingredient, count.get(i) - database.mainDao().getOneInventoryItem(ingredient).get(0).getInventory().getAmount());
+                database.mainDao().insertShoppingList(shoppingList);
+            }
+            i++;
+        }
+        dialog.cancel();
+        makeToast("Added missing ingredients to shopping list");
     }
 
     private void finishedCookingRecipe(List<Ingredients> ingredientList, ArrayList<Integer> count) {
@@ -242,7 +262,9 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 validRecipe = false;
                 break;
             }
+            i++;
         }
+        i = 0;
         if (validRecipe) {
             for (Ingredients ingredient : ingredientList) {
                 List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);

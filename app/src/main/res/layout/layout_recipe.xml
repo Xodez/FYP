@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/dialogue"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -93,22 +94,22 @@
             android:layout_height="300dp"
             android:layout_below="@+id/relative2" />
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@+id/instructionList"
             android:layout_centerInParent="true">
 
             <Button
-                android:id="@+id/done"
-                android:layout_width="wrap_content"
+                android:id="@+id/cancel"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:layout_marginStart="32dp"
+                android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="16dp"
-                android:text="Done"
+                android:layout_weight="1"
+                android:text="Cancel"
                 android:textColor="@color/primaryTextColor"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -117,40 +118,38 @@
 
             <Button
                 android:id="@+id/addMissing"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignStart="@+id/done"
-                android:layout_centerInParent="true"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="32dp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="4dp"
                 android:layout_marginTop="16dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginEnd="4dp"
                 android:layout_marginBottom="16dp"
+                android:layout_weight="1"
                 android:text="Add missing ingredients"
                 android:textColor="@color/primaryTextColor"
+                android:textSize="11sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/done"
                 app:layout_constraintStart_toEndOf="@id/cancel"
                 app:layout_constraintTop_toTopOf="parent" />
 
             <Button
-                android:id="@+id/cancel"
-                android:layout_width="wrap_content"
+                android:id="@+id/done"
+
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_alignStart="@+id/addMissing"
-                android:layout_centerInParent="true"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="32dp"
+                android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
-                android:layout_marginEnd="32dp"
+                android:layout_marginEnd="8dp"
                 android:layout_marginBottom="16dp"
-                android:text="Cancel"
+                android:layout_weight="1"
+                android:text="Done"
                 android:textColor="@color/primaryTextColor"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/done"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        </LinearLayout>
 
     </RelativeLayout>
 </ScrollView>

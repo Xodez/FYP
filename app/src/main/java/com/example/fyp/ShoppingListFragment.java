@@ -84,6 +84,12 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         });
     }
 
+    public void refresh() {
+        shoppingList.clear();
+        shoppingList.addAll(database.mainDao().getAllShoppingListItems());
+        recyclerView.setAdapter(adapter);
+    }
+
     private void initRecyclerView() {
         LinearLayoutManager layoutManager = new LinearLayoutManager(this.getContext(), LinearLayoutManager.VERTICAL, false);
         recyclerView = requireView().findViewById(R.id.verticalView);
