@@ -50,27 +50,18 @@ import com.example.fyp.adapters.RecyclerViewAdapterGenericSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterInstruction;
 import com.example.fyp.adapters.RecyclerViewAdapterInstructionSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.Random;
+import java.util.Locale;
 
 public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener,
         RecyclerViewAdapterInstructionSelect.OnItemListener, RecyclerViewAdapterGenericSelect.OnIngredientItemListener {
@@ -434,13 +425,12 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         }
         Recipe temp = new Recipe(enterName.getText().toString(), instructions.toString(), file.getAbsolutePath());
 
-        database.mainDao().insertRecipe(temp);
-        int recipeID = database.mainDao().getAllRecipes().get(database.mainDao().getAllRecipes().size() - 1).getID();
+        long recipeId = database.mainDao().insertRecipe(temp);
         for (int i = 0; i < ingredientList.size(); i++) {
             Ingredients ingredient = new Ingredients(ingredientList.get(i));
             database.mainDao().insertIngredient(ingredient);
 
-            RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, count.get(i));
+            RecipeIngredients recipeIngredients = new RecipeIngredients((int) recipeId, ingredient, count.get(i));
             database.mainDao().insertRecipeIngredient(recipeIngredients);
         }
         recipes.clear();
@@ -551,105 +541,76 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         recyclerView2.setAdapter(adapter2);
     }
 
-    public void getRecipe(String ID) {
+    /**
+     * Imports one MealDB recipe by meal id. Duplicate imports are skipped
+     * via the persisted external id, and recipe ingredients are attached
+     * to the row id returned by the insert (never inferred from the last
+     * row of the whole table, which raced under concurrent imports).
+     */
+    private boolean importMeal(String mealId) {
+        if (database.mainDao().findRecipeIdByMealId(mealId) != null) {
+            return false;
+        }
+        Meal meal = MealApi.parseMeal(MealApi.get("lookup.php?i=" + mealId));
+        if (meal == null) {
+            return false;
+        }
+        Recipe recipe = new Recipe(meal.getStrMeal(),
+                MealApi.instructionsFrom(meal), MealApi.imageFrom(meal));
+        recipe.setMealId(mealId);
+        long recipeId = database.mainDao().insertRecipe(recipe);
+        for (String name : MealApi.ingredientNames(meal)) {
+            Ingredients ingredient = new Ingredients(IngredientNames.normalize(name));
+            database.mainDao().insertIngredient(ingredient);
+            // One unit per ingredient: MealDB measure strings ("200g",
+            // "to taste") do not map onto discrete inventory units, and
+            // inventing random counts was worse than an honest fallback.
+            database.mainDao().insertRecipeIngredient(
+                    new RecipeIngredients((int) recipeId, ingredient, 1));
+        }
+        return true;
+    }
+
+    private void searchRecipe(String rawQuery) {
+        String query = rawQuery == null ? "" : rawQuery.trim();
+        if (query.isEmpty()) {
+            makeToast("Please enter a recipe ingredient");
+            return;
+        }
+        final String ingredient = query.toLowerCase(Locale.ROOT).replace(" ", "_");
+        // One bounded background thread imports results sequentially;
+        // previously every result spawned its own thread and DB write.
         new Thread(() -> {
-            //doInBackground
-            BufferedReader reader;
-            String line;
-            StringBuffer responseContent = new StringBuffer();
-            try {
-                URL url = new URL("https://www.themealdb.com/api/json/v1/1/lookup.php?i=" + ID);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(5000);
-                connection.setReadTimeout(5000);
-
-                int status = connection.getResponseCode();
-
-                if (status > 299) {
-                    reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-                } else {
-                    reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                }
-                while ((line = reader.readLine()) != null) {
-                    responseContent.append(line);
-                }
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+            List<String> mealIds = MealApi.parseMealIds(
+                    MealApi.get("filter.php?i=" + ingredient));
+            if (mealIds == null) {
+                requireActivity().runOnUiThread(
+                        () -> makeToast("Recipe search failed. Check your connection."));
+                return;
             }
-            requireActivity().runOnUiThread(() -> {
-                Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().create();
-                JsonObject json = JsonParser.parseString(responseContent.toString()).getAsJsonObject();
-
-                Meal meal = gson.fromJson(json.get("meals").getAsJsonArray().get(0).toString(), Meal.class);
-
-                String parsedInstructions = meal.getStrInstructions().replaceAll("\n", "").replaceAll("\r", "").replaceAll("\\.", "@");
-                Recipe recipe = new Recipe(meal.getStrMeal(), parsedInstructions, meal.getStrMealThumb());
-                database.mainDao().insertRecipe(recipe);
-                int recipeID = database.mainDao().getAllRecipes().get(database.mainDao().getAllRecipes().size() - 1).getID();
-                for (String item : meal.getAllIngredients()) {
-                    if (item.equals("")) {
-                        break;
-                    }
-                    Ingredients ingredient = new Ingredients(item);
-                    database.mainDao().insertIngredient(ingredient);
-
-                    RecipeIngredients recipeIngredients = new RecipeIngredients(recipeID, ingredient, (int) (Math.random() * (4 - 1)) + 1);
-                    database.mainDao().insertRecipeIngredient(recipeIngredients);
+            if (mealIds.isEmpty()) {
+                requireActivity().runOnUiThread(
+                        () -> makeToast("No recipes found with that ingredient"));
+                return;
+            }
+            int importedCount = 0;
+            for (String mealId : mealIds) {
+                if (importMeal(mealId)) {
+                    importedCount++;
                 }
+            }
+            final int count = importedCount;
+            requireActivity().runOnUiThread(() -> {
                 recipes.clear();
                 recipes.addAll(database.mainDao().getAllRecipes());
                 recipeRecyclerView.setAdapter(recipeAdapter);
+                if (count == 0) {
+                    makeToast("Recipes already imported");
+                } else {
+                    makeToast("Imported " + count + " recipe(s)");
+                }
             });
         }).start();
-
-    }
-
-    private void searchRecipe(String recipeName) {
-        if (recipeName != null) {
-            new Thread(() -> {
-                //doInBackground
-                BufferedReader reader;
-                String line;
-                StringBuffer responseContent = new StringBuffer();
-                try {
-                    URL url = new URL("https://www.themealdb.com/api/json/v1/1/filter.php?i=" + recipeName.replace(" ", "_"));
-                    HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-                    connection.setRequestMethod("GET");
-                    connection.setConnectTimeout(5000);
-                    connection.setReadTimeout(5000);
-
-                    int status = connection.getResponseCode();
-
-                    if (status > 299) {
-                        reader = new BufferedReader(new InputStreamReader(connection.getErrorStream()));
-                    } else {
-                        reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    }
-                    while ((line = reader.readLine()) != null) {
-                        responseContent.append(line);
-                    }
-                    reader.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                requireActivity().runOnUiThread(() -> {
-                    if (JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").isJsonNull()){
-                        makeToast("No recipes found with that ingredient");
-                    }else {
-                        for (int i = 0; i < JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").getAsJsonArray().size(); i++) {
-                            String mealId = JsonParser.parseString(responseContent.toString()).getAsJsonObject().get("meals").getAsJsonArray().get(i).getAsJsonObject().get("idMeal").getAsString();
-                            getRecipe(mealId);
-                        }
-                    }
-                });
-            }).start();
-        } else {
-            makeToast("Please enter a recipe ingredient");
-        }
     }
 
     Toast t;
