@@ -22,10 +22,22 @@ public class Recipe implements Serializable {
     @ColumnInfo(name = "image")
     String image;
 
+    /** External source id from TheMealDB; null for locally created recipes. */
+    @ColumnInfo(name = "meal_id")
+    String mealId;
+
     public Recipe(String name, String instructions, String image) {
         this.name = name;
         this.instructions = instructions;
         this.image = image;
+    }
+
+    public String getMealId() {
+        return mealId;
+    }
+
+    public void setMealId(String mealId) {
+        this.mealId = mealId;
     }
 
     public String getImage() {

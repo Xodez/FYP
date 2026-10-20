@@ -97,17 +97,19 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
         mYear = cal.get(Calendar.YEAR);
 
         closeDialogue.setOnClickListener(view -> {
-            if (ingredientName.getText() == null || dateText.getText() == null || ingredientName.getText().toString().equals("") || dateText.getText().toString().equals("")) {
+            String typedName = ingredientName.getText().toString().trim();
+            if (typedName.isEmpty() || dateText.getText().toString().isEmpty()) {
                 makeToast("Please fill in all fields");
             } else {
-                Ingredients ingredient = new Ingredients(ingredientName.getText().toString().toUpperCase());
+                Ingredients ingredient = new Ingredients(IngredientNames.normalize(typedName));
                 Inventory inventory = new Inventory(ingredient, numberPicker.getValue());
                 ExpiryDate expiryDate = new ExpiryDate(dateText.getText().toString(), ingredient);
+                String name = ingredient.getName();
                 for (int i = 0; i < numberPicker.getValue(); i++) {
                     database.mainDao().insertExpiryDate(expiryDate);
                 }
-                if (database.mainDao().checkIfInventoryItemExists(ingredient).size() > 0) {
-                    database.mainDao().updateInventoryListAmount(numberPicker.getValue(), ingredient);
+                if (database.mainDao().checkIfInventoryItemExists(name).size() > 0) {
+                    database.mainDao().updateInventoryListAmount(numberPicker.getValue(), name);
                 } else {
                     database.mainDao().insertInventory(inventory);
                 }
@@ -132,13 +134,18 @@ public class InventoryFragment extends Fragment implements RecyclerViewAdapterIn
     }
 
     @Override
-    public void onRemoveButtonClick(int position, String expiryDate) {
-        if (inventories.get(position).getInventory().getAmount() > 1) {
-            database.mainDao().updateInventoryListAmount(-1, inventories.get(position).getInventory().getIngredient());
-            database.mainDao().deleteExpiryDate(database.mainDao().getOneExpiryDate(expiryDate).get(0));
+    public void onRemoveButtonClick(int position) {
+        Inventory inventory = inventories.get(position).getInventory();
+        String name = IngredientNames.normalize(inventory.getIngredient().getName());
+        if (inventory.getAmount() > 1) {
+            // Remove one unit: decrement amount and delete exactly one
+            // (the soonest) expiry record of this ingredient, atomically.
+            database.mainDao().removeOneInventoryUnit(name);
         } else {
-            database.mainDao().deleteInventoryItem(inventories.get(position).getInventory());
-            database.mainDao().deleteExpiryDate(database.mainDao().getOneExpiryDate(expiryDate).get(0));
+            // Last unit: the inventory row and all expiry records of the
+            // ingredient go together.
+            database.mainDao().deleteInventoryItem(inventory);
+            database.mainDao().deleteExpiryDatesForIngredient(name);
         }
         inventories.clear();
         inventories.addAll(database.mainDao().getInventoriesWithExpiryDates());

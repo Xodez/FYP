@@ -110,6 +110,10 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
 
     @Override
     public void onRemoveButtonClick(int position) {
+        // Capture the item's stable identity (its ID is the ingredient
+        // name) instead of relying on a position that may no longer be
+        // valid when the date dialog completes.
+        final String itemId = shoppingList.get(position).getID();
         final Calendar cal = Calendar.getInstance();
         int mDate = cal.get(Calendar.DATE);
         int mMonth = cal.get(Calendar.MONTH);
@@ -117,25 +121,31 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
         DatePickerDialog datePickerDialog = new DatePickerDialog(this.getContext(), android.R.style.Theme_DeviceDefault_Dialog, new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePicker datePicker, int year, int month, int date) {
+                ShoppingList item = database.mainDao().getShoppingListItem(itemId);
+                if (item == null) {
+                    // Item disappeared while the dialog was open.
+                    refresh();
+                    return;
+                }
+                String name = IngredientNames.normalize(item.getIngredient().getName());
                 dateFormatted = date + "-" + (month + 1) + "-" + year;
-                ExpiryDate expiryDate = new ExpiryDate(dateFormatted, shoppingList.get(position).getIngredient());
-                if (database.mainDao().checkIfInventoryItemExists(shoppingList.get(position).getIngredient()).size() > 0) {
-                    database.mainDao().updateInventoryListAmount(1, shoppingList.get(position).getIngredient());
+                ExpiryDate expiryDate = new ExpiryDate(dateFormatted, new Ingredients(name));
+                // Move the purchased unit into inventory with its expiry
+                // record, then decrement or remove the shopping entry.
+                if (database.mainDao().checkIfInventoryItemExists(name).size() > 0) {
+                    database.mainDao().updateInventoryListAmount(1, name);
                     database.mainDao().insertExpiryDate(expiryDate);
                 } else {
-                    Inventory temp = new Inventory(shoppingList.get(position).getIngredient(), 1);
-                    database.mainDao().insertInventory(temp);
+                    database.mainDao().insertInventory(new Inventory(new Ingredients(name), 1));
                     database.mainDao().insertExpiryDate(expiryDate);
                 }
 
-                if (shoppingList.get(position).getAmount() > 1) {
-                    database.mainDao().updateShoppingListAmount(-1, shoppingList.get(position).getIngredient().getName());
+                if (item.getAmount() > 1) {
+                    database.mainDao().updateShoppingListAmount(-1, item.getID());
                 } else {
-                    database.mainDao().deleteShoppingListItem(shoppingList.get(position));
+                    database.mainDao().deleteShoppingListItem(item);
                 }
-                shoppingList.clear();
-                shoppingList.addAll(database.mainDao().getAllShoppingListItems());
-                recyclerView.setAdapter(adapter);
+                refresh();
             }
         }, mYear, mMonth, mDate);
 
@@ -144,16 +154,20 @@ public class ShoppingListFragment extends Fragment implements RecyclerViewAdapte
     }
 
     public void addItem(String item) {
-        if (database.mainDao().checkIfItemExists(item.toUpperCase()).size() > 0) {
-            database.mainDao().updateShoppingListAmount(1, item.toUpperCase());
+        String name = IngredientNames.normalize(item);
+        if (name.isEmpty()) {
+            makeToast("Enter an item");
+            return;
+        }
+        if (database.mainDao().checkIfItemExists(name).size() > 0) {
+            database.mainDao().updateShoppingListAmount(1, name);
             shoppingList.clear();
             shoppingList.addAll(database.mainDao().getAllShoppingListItems());
             recyclerView.setAdapter(adapter);
         } else {
-            Log.d(TAG, "addItem: " + database.mainDao().checkIfItemExists(item));
-            Ingredients temp = new Ingredients(item.toUpperCase());
+            Ingredients temp = new Ingredients(name);
             database.mainDao().insertIngredient(temp);
-            ShoppingList temp2 = new ShoppingList(temp.getName(), temp, 1);
+            ShoppingList temp2 = new ShoppingList(name, new Ingredients(name), 1);
             database.mainDao().insertShoppingList(temp2);
             shoppingList.clear();
             shoppingList.addAll(database.mainDao().getAllShoppingListItems());

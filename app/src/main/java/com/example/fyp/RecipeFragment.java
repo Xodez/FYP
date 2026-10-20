@@ -38,6 +38,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.fyp.Database.RoomDB;
 import com.example.fyp.Models.Ingredients;
+import com.example.fyp.Models.Inventory;
 import com.example.fyp.Models.InventoryWithExpiryDates;
 import com.example.fyp.Models.Meal;
 import com.example.fyp.Models.Recipe;
@@ -239,12 +240,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private void addMissingIngredients(List<Ingredients> ingredientList2, ArrayList<Integer> count) {
         int i = 0;
         for (Ingredients ingredient: ingredientList2) {
-            if(database.mainDao().getOneInventoryItem(ingredient).size() == 0){
-                ShoppingList shoppingList = new ShoppingList(ingredient.getName(), ingredient, count.get(i));
-                database.mainDao().insertShoppingList(shoppingList);
-            }
-            else if(database.mainDao().getOneInventoryItem(ingredient).get(0).getInventory().getAmount() < count.get(i)){
-                ShoppingList shoppingList = new ShoppingList(ingredient.getName(), ingredient, count.get(i) - database.mainDao().getOneInventoryItem(ingredient).get(0).getInventory().getAmount());
+            String name = IngredientNames.normalize(ingredient.getName());
+            List<InventoryWithExpiryDates> owned = database.mainDao().getOneInventoryItem(name);
+            int ownedAmount = owned.isEmpty()
+                    ? 0 : owned.get(0).getInventory().getAmount();
+            int missing = count.get(i) - ownedAmount;
+            if (missing > 0) {
+                ShoppingList shoppingList = new ShoppingList(name, new Ingredients(name), missing);
                 database.mainDao().insertShoppingList(shoppingList);
             }
             i++;
@@ -257,8 +259,9 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         int i = 0;
         boolean validRecipe = true;
         for (Ingredients ingredient : ingredientList) {
-            List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);
-            if (temp.size() == 0 || temp.get(0).getInventory().getAmount() < count.get(i)) {
+            String name = IngredientNames.normalize(ingredient.getName());
+            List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(name);
+            if (temp.isEmpty() || temp.get(0).getInventory().getAmount() < count.get(i)) {
                 validRecipe = false;
                 break;
             }
@@ -267,11 +270,18 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         i = 0;
         if (validRecipe) {
             for (Ingredients ingredient : ingredientList) {
-                List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(ingredient);
-                if (temp.get(0).getInventory().getAmount() == count.get(i)) {
-                    database.mainDao().deleteInventoryItem(temp.get(0).getInventory());
+                String name = IngredientNames.normalize(ingredient.getName());
+                List<InventoryWithExpiryDates> temp = database.mainDao().getOneInventoryItem(name);
+                Inventory inventory = temp.get(0).getInventory();
+                if (inventory.getAmount() == count.get(i)) {
+                    // Last units consumed: drop the row and its expiry
+                    // records together, leaving nothing stale behind.
+                    database.mainDao().deleteInventoryItem(inventory);
+                    database.mainDao().deleteExpiryDatesForIngredient(name);
                 } else {
-                    database.mainDao().updateInventoryListAmount(-count.get(i), ingredient);
+                    // Consume the soonest-expiring units first and delete
+                    // one expiry record per consumed unit, atomically.
+                    database.mainDao().consumeInventoryUnits(name, count.get(i));
                 }
                 i++;
             }
@@ -341,9 +351,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
     private void deleteRecipe() {
         if (recipePosition != -1) {
-            database.mainDao().deleteRecipe(recipes.get(recipePosition));
-            File tempFile = new File(recipes.get(recipePosition).getImage());
-            Boolean imageDeleted = tempFile.delete();
+            Recipe recipe = recipes.get(recipePosition);
+            database.mainDao().deleteRecipeWithIngredients(recipe);
+            String image = recipe.getImage();
+            if (image != null && !image.startsWith("http://")
+                    && !image.startsWith("https://")) {
+                new File(image).delete();
+            }
             recipes.clear();
             recipes.addAll(database.mainDao().getAllRecipes());
             recipeRecyclerView.setAdapter(recipeAdapter);
@@ -451,12 +465,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         if (text.length() == 0) {
             makeToast("Enter an item");
         } else {
-            if (ingredientList.contains(text.toUpperCase())) {
-                int pos = ingredientList.indexOf(text.toUpperCase());
+            String normalised = IngredientNames.normalize(text);
+            if (ingredientList.contains(normalised)) {
+                int pos = ingredientList.indexOf(normalised);
                 count.set(pos, count.get(pos) + 1);
                 recyclerView.setAdapter(adapter);
             } else {
-                ingredientList.add(text.toUpperCase());
+                ingredientList.add(normalised);
                 count.add(1);
                 recyclerView.setAdapter(adapter);
                 makeToast("Added: " + text);

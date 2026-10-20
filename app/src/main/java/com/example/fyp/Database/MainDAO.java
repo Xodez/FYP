@@ -17,6 +17,9 @@ import com.example.fyp.Models.RecipeIngredients;
 import com.example.fyp.Models.RecipeWithIngredients;
 import com.example.fyp.Models.ShoppingList;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @Dao
@@ -44,6 +47,9 @@ public interface MainDAO {
     @Query("SELECT * FROM shopping_list")
     List<ShoppingList> getAllShoppingListItems();
 
+    @Query("SELECT * FROM shopping_list WHERE ID = :id LIMIT 1")
+    ShoppingList getShoppingListItem(String id);
+
     @Query("UPDATE shopping_list SET amount = amount + :amount WHERE :id = id")
     void updateShoppingListAmount(int amount, String id);
 
@@ -61,18 +67,26 @@ public interface MainDAO {
     @Query("SELECT * FROM inventory")
     List<InventoryWithExpiryDates> getInventoriesWithExpiryDates();
 
+    /**
+     * Inventory entries for one ingredient, looked up by its normalised
+     * name (ingredient columns store plain names since schema 6).
+     */
     @Transaction
-    @Query("SELECT * FROM inventory WHERE :ingredients = ingredient")
-    List<InventoryWithExpiryDates> getOneInventoryItem(Ingredients ingredients);
+    @Query("SELECT * FROM inventory WHERE ingredient = :ingredientName")
+    List<InventoryWithExpiryDates> getOneInventoryItem(String ingredientName);
 
-    @Query("UPDATE inventory SET amount = amount + :amount WHERE :ingredient = ingredient")
-    void updateInventoryListAmount(int amount, Ingredients ingredient);
+    @Query("UPDATE inventory SET amount = amount + :amount WHERE :ingredientName = ingredient")
+    void updateInventoryListAmount(int amount, String ingredientName);
 
     @Delete
     void deleteInventoryItem(Inventory inventory);
 
-    @Query("SELECT ingredient FROM inventory WHERE :ingredient = ingredient")
-    List<Ingredients> checkIfInventoryItemExists(Ingredients ingredient);
+    @Query("SELECT ingredient FROM inventory WHERE :ingredientName = ingredient")
+    List<Ingredients> checkIfInventoryItemExists(String ingredientName);
+
+    /** Deletes an inventory row and all of its expiry records together. */
+    @Query("DELETE FROM expiry_date WHERE inventory_ingredient = :ingredientName")
+    void deleteExpiryDatesForIngredient(String ingredientName);
 
     //Expiry Date
     @Insert(onConflict = REPLACE)
@@ -81,21 +95,103 @@ public interface MainDAO {
     @Query("SELECT * FROM expiry_date")
     List<ExpiryDate> getAllExpiryDates();
 
-    @Query("SELECT * FROM expiry_date WHERE :expiryDate = expiry_date LIMIT 1")
-    List<ExpiryDate> getOneExpiryDate(String expiryDate);
+    /**
+     * All expiry records of one ingredient (normalised name).
+     */
+    @Query("SELECT * FROM expiry_date WHERE inventory_ingredient = :ingredientName")
+    List<ExpiryDate> getExpiryDatesForIngredient(String ingredientName);
+
+    /**
+     * The soonest-expiring unit of one ingredient, or null when the
+     * ingredient has no expiry records with parsable dates. Scoped by
+     * ingredient so removing one unit can never delete another
+     * ingredient's same-dated record. Dates are stored as d-M-yyyy text,
+     * so the earliest is selected in Java rather than by SQL ordering.
+     */
+    @Transaction
+    default ExpiryDate getEarliestExpiryDate(String ingredientName) {
+        ExpiryDate earliest = null;
+        LocalDate earliestDate = null;
+        for (ExpiryDate candidate : getExpiryDatesForIngredient(ingredientName)) {
+            LocalDate parsed = parseExpiry(candidate.getExpiryDate());
+            if (parsed != null && (earliestDate == null || parsed.isBefore(earliestDate))) {
+                earliestDate = parsed;
+                earliest = candidate;
+            }
+        }
+        return earliest;
+    }
+
+    static LocalDate parseExpiry(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(raw, DateTimeFormatter.ofPattern("d-M-yyyy"));
+        } catch (DateTimeParseException ignored) {
+            return null;
+        }
+    }
 
     @Delete
     void deleteExpiryDate(ExpiryDate expiryDate);
 
+    @Query("DELETE FROM expiry_date WHERE ID = :id")
+    void deleteExpiryDateById(int id);
+
+    /**
+     * Removes one owned unit of an ingredient: decrements the amount and
+     * deletes exactly one expiry record (the soonest), atomically. When no
+     * expiry record exists, only the amount changes.
+     */
+    @Transaction
+    default void removeOneInventoryUnit(String ingredientName) {
+        ExpiryDate earliest = getEarliestExpiryDate(ingredientName);
+        if (earliest != null) {
+            deleteExpiryDateById(earliest.getID());
+        }
+        updateInventoryListAmount(-1, ingredientName);
+    }
+
+    /**
+     * Consumes count units of an ingredient for a completed recipe:
+     * deletes up to count of its soonest expiry records and decrements the
+     * amount, atomically. Never leaves expiry rows behind for consumed
+     * units and never touches records of other ingredients.
+     */
+    @Transaction
+    default void consumeInventoryUnits(String ingredientName, int count) {
+        for (int i = 0; i < count; i++) {
+            ExpiryDate earliest = getEarliestExpiryDate(ingredientName);
+            if (earliest == null) {
+                break;
+            }
+            deleteExpiryDateById(earliest.getID());
+        }
+        updateInventoryListAmount(-count, ingredientName);
+    }
+
     //Recipe
     @Insert(onConflict = REPLACE)
-    void insertRecipe(Recipe recipe);
+    long insertRecipe(Recipe recipe);
 
     @Query("SELECT * FROM RECIPE")
     List<Recipe> getAllRecipes();
 
+    @Transaction
+    default void deleteRecipeWithIngredients(Recipe recipe) {
+        deleteRecipeIngredientsOfRecipe(recipe.getID());
+        deleteRecipe(recipe);
+    }
+
     @Delete
     void deleteRecipe(Recipe recipe);
+
+    @Query("DELETE FROM RecipeIngredients WHERE recipe_id = :recipeId")
+    void deleteRecipeIngredientsOfRecipe(int recipeId);
+
+    @Query("SELECT ID FROM recipe WHERE meal_id = :mealId LIMIT 1")
+    Integer findRecipeIdByMealId(String mealId);
 
     @Transaction
     @Query("SELECT * FROM recipe")
@@ -109,4 +205,3 @@ public interface MainDAO {
     @Insert(onConflict = REPLACE)
     void insertRecipeIngredient(RecipeIngredients recipeIngredients);
 }
-
