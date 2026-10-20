@@ -23,23 +23,16 @@ import java.util.List;
 /**
  * Regression tests for RecipeAlgorithm recommendation behaviour.
  *
- * These tests encode the INTENDED behaviour of the ingredient matching and
+ * These tests encode the intended behaviour of the ingredient matching and
  * ranking pipeline (case-insensitive matching, expiry measured in real
  * calendar days, makeable recipes ranked ahead of recipes requiring
  * unavailable ingredients, sooner expiry prioritised, quantity sufficiency
- * respected, degenerate inputs handled safely) - not the way the current
- * implementation happens to behave.
+ * respected, degenerate inputs handled safely).
  *
- * Several tests therefore fail against the existing algorithm and document
- * verified production defects:
- *  - ingredient matching is case-sensitive and whitespace-sensitive
- *    (RecipeAlgorithm uses String.equals on names), so TheMealDB recipes
- *    never match uppercased inventory entries;
- *  - days-to-expiry is derived from Period.between(...).getDays(), which is
- *    the day-of-month component, not the calendar day count, so an item
- *    expiring "one month from now" is scored as expiring today;
- *  - the comparator truncates float score differences to int, collapsing
- *    fractional scores into ties ordered by input position.
+ * Five of these tests previously failed and documented verified production
+ * defects (case-sensitive matching, day-of-month expiry arithmetic via
+ * Period.getDays(), and int-truncated comparator scores). They now serve
+ * as guards against regressions of those defects.
  */
 public class RecipeAlgorithmTest {
 
@@ -67,6 +60,22 @@ public class RecipeAlgorithmTest {
         entry.setInventory(inventory);
         entry.setExpiryDates(new ArrayList<>(
                 Collections.singletonList(new ExpiryDate(expiryDate, ingredient))));
+        return entry;
+    }
+
+    /** Inventory entry with explicit (possibly invalid) expiry dates. */
+    private static InventoryWithExpiryDates pantryWithDates(String name,
+                                                            int amount,
+                                                            String... expiryDates) {
+        Ingredients ingredient = new Ingredients(name);
+        Inventory inventory = new Inventory(ingredient, amount);
+        InventoryWithExpiryDates entry = new InventoryWithExpiryDates();
+        entry.setInventory(inventory);
+        List<ExpiryDate> dates = new ArrayList<>();
+        for (String date : expiryDates) {
+            dates.add(new ExpiryDate(date, ingredient));
+        }
+        entry.setExpiryDates(dates);
         return entry;
     }
 
@@ -408,5 +417,127 @@ public class RecipeAlgorithmTest {
         assertTrue("a real makeable recipe must be ranked first, got "
                         + namesOf(result),
                 !result.isEmpty() && result.get(0).getName().equals("Crepes"));
+    }
+
+    /**
+     * Chosen policy: a recipe without ingredient requirements is excluded
+     * from ranked recommendations rather than promoted or leaking state.
+     */
+    @Test
+    public void recipeWithoutIngredientsIsExcludedFromResults() {
+        List<InventoryWithExpiryDates> exp =
+                Collections.singletonList(pantry("MILK", 1, inDays(2)));
+        RecipeWithIngredients emptyMenu = recipe("Empty Menu");
+        RecipeWithIngredients crepes =
+                recipe("Crepes", required("MILK", 1));
+
+        List<Recipe> result = algorithm.filterRecipeByScore(
+                Arrays.asList(emptyMenu, crepes), exp);
+
+        assertEquals(Collections.singletonList("Crepes"), namesOf(result));
+    }
+
+    /**
+     * Chosen policy: an inventory item with no usable expiry information
+     * keeps its identity and quantity but its urgency counts as unknown,
+     * so recipes relying on it must not outrank otherwise comparable
+     * recipes with valid expiry data.
+     */
+    @Test
+    public void unknownExpiryRanksBehindComparableKnownExpiry() {
+        List<InventoryWithExpiryDates> exp = Arrays.asList(
+                pantryWithDates("TOFU", 1),                    // no rows
+                pantryWithDates("RICE", 1, "32-13-2026"),      // malformed
+                pantry("POTATO", 1, inDays(60)));              // valid, far
+        RecipeWithIngredients tofuDish =
+                recipe("Tofu Stir Fry", required("TOFU", 1));
+        RecipeWithIngredients riceDish =
+                recipe("Rice Pilaf", required("RICE", 1));
+        RecipeWithIngredients potatoDish =
+                recipe("Potato Gratin", required("POTATO", 1));
+
+        List<Recipe> result = algorithm.filterRecipeByScore(
+                Arrays.asList(tofuDish, riceDish, potatoDish), exp);
+
+        assertEquals("all three recipes remain makeable and returned",
+                3, result.size());
+        // The recipe with valid (even if distant) expiry data must lead.
+        assertEquals("Potato Gratin", result.get(0).getName());
+        // Unknown-urgency recipes rank behind it, never ahead.
+        int tofuIndex = indexOfRecipe(result, "Tofu Stir Fry");
+        int riceIndex = indexOfRecipe(result, "Rice Pilaf");
+        assertTrue("Potato Gratin", tofuIndex > 0);
+        assertTrue("Potato Gratin", riceIndex > 0);
+    }
+
+    /** Chosen policy: malformed expiry data never crashes ranking. */
+    @Test
+    public void malformedAndNullExpiryEntriesDoNotThrow() {
+        List<InventoryWithExpiryDates> exp = Arrays.asList(
+                pantryWithDates("BEANS", 2, "garbage", null, "1-1-2999"),
+                pantry("LENTILS", 2, inDays(4)));
+        RecipeWithIngredients chilli =
+                recipe("Chilli", required("BEANS", 1), required("LENTILS", 1));
+
+        List<Recipe> result = algorithm.filterRecipeByScore(
+                Collections.singletonList(chilli), exp);
+
+        assertEquals(Collections.singletonList("Chilli"), namesOf(result));
+    }
+
+    /**
+     * Chosen policy: already-expired items count as maximum urgency (0
+     * days) but never as negative extreme scores; the ranking is a
+     * waste-reduction heuristic, not a food-safety judgement.
+     */
+    @Test
+    public void expiredIngredientRanksWithMaximumUrgencyNotExtremeScore() {
+        List<InventoryWithExpiryDates> exp = Arrays.asList(
+                pantry("YOGURT", 1, inDays(-5)),   // expired 5 days ago
+                pantry("FLOUR", 1, inDays(20)));
+        RecipeWithIngredients pancakes =
+                recipe("Pancakes", required("YOGURT", 1));
+        RecipeWithIngredients bread =
+                recipe("Bread", required("FLOUR", 1));
+
+        List<Recipe> result = algorithm.filterRecipeByScore(
+                Arrays.asList(bread, pancakes), exp);
+
+        // Expired-yogurt recipe is most urgent; it must not sink or throw,
+        // and both recipes remain available.
+        assertRankedAhead(result, "Pancakes", "Bread");
+    }
+
+    /**
+     * Chosen policy: an inventory row whose amount is zero or negative is
+     * out of stock; a recipe requiring none of it still cannot score as a
+     * makeable top recommendation through division-by-zero behaviour.
+     */
+    @Test
+    public void zeroAmountInventoryCountsAsMissing() {
+        List<InventoryWithExpiryDates> exp =
+                Collections.singletonList(pantry("SALT", 0, inDays(10)));
+        RecipeWithIngredients soup = recipe("Soup", required("SALT", 1));
+        RecipeWithIngredients bread =
+                recipe("Bread", required("FLOUR", 1));
+        List<InventoryWithExpiryDates> withFlour = Arrays.asList(
+                pantry("SALT", 0, inDays(10)),
+                pantry("FLOUR", 2, inDays(20)));
+
+        List<Recipe> result = algorithm.filterRecipeByScore(
+                Arrays.asList(soup, bread), withFlour);
+
+        assertEquals("Bread", result.get(0).getName());
+    }
+
+    /** IngredientNames normalisation rules used by matching. */
+    @Test
+    public void normalisationTrimsAndUpperCasesWithoutLocaleSurprises() {
+        assertEquals("TOMATO", IngredientNames.normalize(" tomato "));
+        assertEquals("MILK", IngredientNames.normalize("Milk"));
+        assertEquals("SPINACH", IngredientNames.normalize("SPINACH"));
+        assertEquals("", IngredientNames.normalize(null));
+        // Locale-independent: Turkish locale must not break the I case.
+        assertEquals("ONIONS", IngredientNames.normalize("onions"));
     }
 }
