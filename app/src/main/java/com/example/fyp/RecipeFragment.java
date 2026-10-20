@@ -1,10 +1,8 @@
 package com.example.fyp;
 
-import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
@@ -30,8 +28,6 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -52,7 +48,6 @@ import com.example.fyp.adapters.RecyclerViewAdapterInstructionSelect;
 import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -66,7 +61,6 @@ import java.util.Locale;
 public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecipes.OnRecipeItemListener, RecyclerViewAdapterGeneric.OnIngredientItemListener, RecyclerViewAdapterInstruction.OnItemListener,
         RecyclerViewAdapterInstructionSelect.OnItemListener, RecyclerViewAdapterGenericSelect.OnIngredientItemListener {
 
-    public static final int WRITE_EXTERNAL_STORAGE_CODE = 101;
     private RecyclerView recyclerView;
     private RecyclerView recyclerView2;
     private static final String[] paths = {"By Recommended", "By Name"};
@@ -79,7 +73,12 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private ArrayList<String> ingredientList;
     private ArrayList<Integer> count;
     private ArrayList<String> instructionList;
-    private OutputStream outputStream;
+    // Custom recipe editor state: image and external id carried through
+    // an edit so they survive when the user does not replace them.
+    private Recipe editingRecipe;
+    private String existingImage;
+    private String existingMealId;
+    private boolean imageReplaced;
     private List<Recipe> recipes;
     private RoomDB database;
     private Dialog dialog;
@@ -159,7 +158,12 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
             dialog.setContentView(R.layout.layout_recipe);
 
-            recipeWithIngredients = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName()).get(0);
+            List<RecipeWithIngredients> selected = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName());
+            if (selected.isEmpty()) {
+                makeToast("Recipe unavailable");
+                return;
+            }
+            recipeWithIngredients = selected.get(0);
             ingredientList = new ArrayList<>();
             List<Ingredients> ingredientList2 = new ArrayList<>();
             count = new ArrayList<>();
@@ -204,7 +208,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             else {
                 recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
             }
-            recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
 
             LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
             recyclerView = dialog.findViewById(R.id.ingredientList);
@@ -288,7 +291,16 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
             dialog.setContentView(R.layout.layout_newrecipeitem);
 
-            recipeWithIngredients = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName()).get(0);
+            List<RecipeWithIngredients> editable = database.mainDao().getRecipeWithIngredientsByName(recipes.get(recipePosition).getName());
+            if (editable.isEmpty()) {
+                makeToast("Recipe unavailable");
+                return;
+            }
+            recipeWithIngredients = editable.get(0);
+            editingRecipe = recipes.get(recipePosition);
+            existingImage = editingRecipe.getImage();
+            existingMealId = editingRecipe.getMealId();
+            imageReplaced = false;
             ingredientList = new ArrayList<>();
             count = new ArrayList<>();
             instructionList = new ArrayList<>();
@@ -311,7 +323,28 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             recipeImage = dialog.findViewById(R.id.recipeImage);
 
             enterName.setText(recipeWithIngredients.getRecipe().getName());
-            recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
+            String currentImage = recipeWithIngredients.getRecipe().getImage();
+            if (currentImage != null
+                    && (currentImage.startsWith("http://")
+                    || currentImage.startsWith("https://"))) {
+                new Thread(() -> {
+                    Drawable d = null;
+                    try (InputStream in = (InputStream) new URL(currentImage).getContent()) {
+                        d = Drawable.createFromStream(in, "src image");
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Drawable finalD = d;
+                    requireActivity().runOnUiThread(() -> {
+                        if (finalD != null && dialog.isShowing()) {
+                            recipeImage.setImageDrawable(finalD);
+                        }
+                    });
+                }).start();
+            } else {
+                recipeImage.setImageBitmap(currentImage == null
+                        ? null : BitmapFactory.decodeFile(currentImage));
+            }
 
             LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
             recyclerView = dialog.findViewById(R.id.ingredientList);
@@ -329,8 +362,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             uploadImage.setOnClickListener(view -> openGallery());
             addInstruction.setOnClickListener(view -> addInstruction());
             done.setOnClickListener(view -> {
-                deleteRecipe();
-                askWritePermission();
+                replaceEditedRecipe();
+                addRecipe();
             });
             cancel.setOnClickListener(view -> dialog.cancel());
 
@@ -338,6 +371,27 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         } else {
             makeToast("No recipe selected");
         }
+    }
+
+    /**
+     * Removes the stored row for the recipe being edited without touching
+     * its app-private image file, which the re-created recipe may still
+     * reference when the user did not pick a replacement image.
+     */
+    private void replaceEditedRecipe() {
+        if (editingRecipe == null) {
+            return;
+        }
+        database.mainDao().deleteRecipeWithIngredients(editingRecipe);
+        if (imageReplaced && existingImage != null
+                && !existingImage.startsWith("http://")
+                && !existingImage.startsWith("https://")) {
+            new File(existingImage).delete();
+        }
+        recipes.clear();
+        recipes.addAll(database.mainDao().getAllRecipes());
+        recipeRecyclerView.setAdapter(recipeAdapter);
+        recipePosition = -1;
     }
 
     private void deleteRecipe() {
@@ -362,6 +416,10 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         dialog = new Dialog(this.getContext(), R.style.Theme_FYP);
         dialog.setContentView(R.layout.layout_newrecipeitem);
 
+        editingRecipe = null;
+        existingImage = null;
+        existingMealId = null;
+        imageReplaced = false;
         ingredientList = new ArrayList<>();
         count = new ArrayList<>();
         instructionList = new ArrayList<>();
@@ -391,28 +449,25 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         addIngredient.setOnClickListener(view -> addIngredient());
         uploadImage.setOnClickListener(view -> openGallery());
         addInstruction.setOnClickListener(view -> addInstruction());
-        done.setOnClickListener(view -> askWritePermission());
+        done.setOnClickListener(view -> addRecipe());
         cancel.setOnClickListener(view -> dialog.cancel());
 
         dialog.show();
     }
 
     private void addRecipe() {
-        Bitmap bitmap = ((BitmapDrawable) recipeImage.getDrawable()).getBitmap();
-
-        String dir = requireContext().getExternalFilesDir(null).getAbsolutePath() + "/LessOfIt/Images/";
-        File parentFiles = new File(dir);
-        if (!parentFiles.exists()) {
-            parentFiles.mkdirs();
+        String recipeName = enterName.getText().toString().trim();
+        if (recipeName.isEmpty()) {
+            makeToast("Enter a recipe name");
+            return;
         }
-        String recipeImageName = enterName.getText().toString() + System.currentTimeMillis() + ".jpg";
-        File file = new File(dir, recipeImageName);
-        try {
-            outputStream = new FileOutputStream(file);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
+        String imagePath = existingImage == null ? "" : existingImage;
+        if (imageReplaced) {
+            // Only persist a file when the user actually chose an image;
+            // a missing drawable no longer crashes the save.
+            String saved = savePickedImageToAppFiles();
+            imagePath = saved == null ? "" : saved;
         }
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream);
 
         StringBuilder instructions = new StringBuilder();
         for (int i = 0; i < instructionList.size(); i++) {
@@ -423,7 +478,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             }
 
         }
-        Recipe temp = new Recipe(enterName.getText().toString(), instructions.toString(), file.getAbsolutePath());
+        Recipe temp = new Recipe(recipeName, instructions.toString(), imagePath);
+        temp.setMealId(existingMealId);
 
         long recipeId = database.mainDao().insertRecipe(temp);
         for (int i = 0; i < ingredientList.size(); i++) {
@@ -437,6 +493,34 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         recipes.addAll(database.mainDao().getAllRecipes());
         recipeRecyclerView.setAdapter(recipeAdapter);
         dialog.dismiss();
+    }
+
+    /**
+     * Copies the image currently shown in the editor (picked via the
+     * gallery) into app-private storage. Returns the new file path, or
+     * null when no bitmap is available or writing failed.
+     */
+    private String savePickedImageToAppFiles() {
+        Drawable drawable = recipeImage == null ? null : recipeImage.getDrawable();
+        if (!(drawable instanceof BitmapDrawable)) {
+            return null;
+        }
+        Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
+        if (bitmap == null) {
+            return null;
+        }
+        File dir = new File(requireContext().getExternalFilesDir(null).getAbsolutePath() + "/LessOfIt/Images/");
+        if (!dir.exists() && !dir.mkdirs()) {
+            return null;
+        }
+        File file = new File(dir, System.currentTimeMillis() + ".jpg");
+        try (OutputStream out = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 95, out);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return file.getAbsolutePath();
     }
 
     private void addInstruction() {
@@ -483,11 +567,12 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             new ActivityResultCallback<ActivityResult>() {
                 @Override
                 public void onActivityResult(ActivityResult result) {
-                    if (result.getResultCode() == Activity.RESULT_OK) {
-                        Intent data = result.getData();
-                        Uri imageUri = data.getData();
-
+                    if (result.getResultCode() == Activity.RESULT_OK
+                            && result.getData() != null
+                            && result.getData().getData() != null) {
+                        Uri imageUri = result.getData().getData();
                         recipeImage.setImageURI(imageUri);
+                        imageReplaced = true;
                     } else {
                         Toast.makeText(getContext(), "Cancelled", Toast.LENGTH_SHORT).show();
                     }
@@ -509,14 +594,6 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         makeToast("Selected " + recipes.get(position).getName());
     }
 
-    private void askWritePermission() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(requireActivity(), new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_EXTERNAL_STORAGE_CODE);
-        } else {
-            addRecipe();
-        }
-    }
-
     @Override
     public void onIngredientItemClick(int position) {
         count.set(position, count.get(position) + 1);
@@ -529,8 +606,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             count.set(position, count.get(position) - 1);
             recyclerView.setAdapter(adapter);
         } else {
-            ingredientList.remove(ingredientList.get(position));
-            count.remove(count.get(position));
+            ingredientList.remove(position);
+            count.remove(position);
             recyclerView.setAdapter(adapter);
         }
     }
