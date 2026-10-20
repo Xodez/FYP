@@ -88,6 +88,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private RecipeWithIngredients recipeWithIngredients;
     private final List<RecipeWithIngredients> recipeWithIngredients2 = new ArrayList<>();
     private final RecipeAlgorithm ra = new RecipeAlgorithm();
+    private String currentSort = "By Recommended";
     private final List<Recipe> filteredRecipes = new ArrayList<>();
     private final List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
@@ -123,24 +124,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int position, long id) {
-                String selectedItem = adapterView.getItemAtPosition(position).toString();
-                if (selectedItem.equals("By Name")) {
-                    filteredRecipes.addAll(ra.filterRecipeByName(recipes));
-                    recipes.clear();
-                    recipes.addAll(filteredRecipes);
-                    filteredRecipes.clear();
-                    recipeRecyclerView.setAdapter(recipeAdapter);
-                } else if (selectedItem.equals("By Recommended")) {
-                    expiryDates.clear();
-                    recipeWithIngredients2.clear();
-                    recipeWithIngredients2.addAll(database.mainDao().getRecipeWithIngredients());
-                    expiryDates.addAll(database.mainDao().getInventoriesWithExpiryDates());
-                    filteredRecipes.addAll(ra.filterRecipeByScore(recipeWithIngredients2, expiryDates));
-                    recipes.clear();
-                    recipes.addAll(filteredRecipes);
-                    filteredRecipes.clear();
-                    recipeRecyclerView.setAdapter(recipeAdapter);
-                }
+                currentSort = adapterView.getItemAtPosition(position).toString();
+                refreshRecipeList();
             }
 
             @Override
@@ -151,6 +136,28 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
         initRecyclerView();
+    }
+
+    /**
+     * Reloads recipes from the database and applies the currently
+     * selected sort, so imports, saves, and edits never leave the list
+     * silently reverting to raw table order.
+     */
+    private void refreshRecipeList() {
+        List<Recipe> all = database.mainDao().getAllRecipes();
+        filteredRecipes.clear();
+        if (currentSort.equals("By Name")) {
+            filteredRecipes.addAll(ra.filterRecipeByName(all));
+        } else {
+            expiryDates.clear();
+            recipeWithIngredients2.clear();
+            recipeWithIngredients2.addAll(database.mainDao().getRecipeWithIngredients());
+            expiryDates.addAll(database.mainDao().getInventoriesWithExpiryDates());
+            filteredRecipes.addAll(ra.filterRecipeByScore(recipeWithIngredients2, expiryDates));
+        }
+        recipes.clear();
+        recipes.addAll(filteredRecipes);
+        recipeRecyclerView.setAdapter(recipeAdapter);
     }
 
     private void selectRecipe() {
@@ -388,9 +395,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 && !existingImage.startsWith("https://")) {
             new File(existingImage).delete();
         }
-        recipes.clear();
-        recipes.addAll(database.mainDao().getAllRecipes());
-        recipeRecyclerView.setAdapter(recipeAdapter);
+        refreshRecipeList();
         recipePosition = -1;
     }
 
@@ -403,9 +408,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                     && !image.startsWith("https://")) {
                 new File(image).delete();
             }
-            recipes.clear();
-            recipes.addAll(database.mainDao().getAllRecipes());
-            recipeRecyclerView.setAdapter(recipeAdapter);
+            refreshRecipeList();
             recipePosition = -1;
         } else {
             makeToast("No recipe selected");
@@ -489,9 +492,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             RecipeIngredients recipeIngredients = new RecipeIngredients((int) recipeId, ingredient, count.get(i));
             database.mainDao().insertRecipeIngredient(recipeIngredients);
         }
-        recipes.clear();
-        recipes.addAll(database.mainDao().getAllRecipes());
-        recipeRecyclerView.setAdapter(recipeAdapter);
+        refreshRecipeList();
         dialog.dismiss();
     }
 
@@ -678,9 +679,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             }
             final int count = importedCount;
             requireActivity().runOnUiThread(() -> {
-                recipes.clear();
-                recipes.addAll(database.mainDao().getAllRecipes());
-                recipeRecyclerView.setAdapter(recipeAdapter);
+                refreshRecipeList();
                 if (count == 0) {
                     makeToast("Recipes already imported");
                 } else {
