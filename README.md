@@ -41,7 +41,9 @@ inventory entries like "TOMATO".
 
 - Inventory management with per-unit expiry-date tracking.
 - Recipe import from TheMealDB by ingredient search, with duplicate-import
-  protection (external meal IDs are persisted and checked).
+  protection enforced at the database level: external meal IDs are persisted
+  under a unique index and every import commits in one transaction, so even
+  overlapping searches cannot import the same recipe twice.
 - Expiry-aware, inventory-aware deterministic recipe ranking
   ("By Recommended" and "By Name" sort options).
 - Cooking completion updates inventory quantities and expiry records
@@ -64,12 +66,13 @@ limitations](#current-limitations).
 - **Build:** Gradle wrapper 9.0.0, Android Gradle Plugin 8.13.0
 - **SDK:** `compileSdk` 36 (revision 36.1), `minSdk` 26, `targetSdk` 34,
   Build Tools 36.0.0
-- **Persistence:** Room 2.4.0 (schema version 6)
+- **Persistence:** Room 2.4.0 (schema version 7)
 - **Networking/API:** TheMealDB v1 over `HttpURLConnection`, JSON parsed
   with Gson 2.9.0
 - **Testing:** JUnit 4.13.2 (unit), AndroidX Test `ext:junit` 1.2.1,
   Espresso 3.7.0 (instrumented), Room/SQLite framework on the test
-  classpath for migration tests
+  classpath for migration tests (Espresso 3.7.0+ is required to inject
+  input on API 36 devices)
 
 ## Prerequisites
 
@@ -146,9 +149,9 @@ API 26+; Espresso 3.7.0 is required for API 36 devices):
 ```
 
 Verified results at the current configuration: `assembleDebug` succeeds;
-38/38 unit tests pass; 17/17 instrumented tests pass on an API 36 emulator;
-`lint` reports 0 errors and 97 warnings (all pre-existing style/hard-coding
-suggestions, listed under Limitations).
+43/43 unit tests pass; 26/26 instrumented tests pass on an API 36
+emulator; `lint` reports 0 errors and 97 warnings (all pre-existing
+style/hard-coding suggestions, listed under Limitations).
 
 ## API and configuration notes
 
@@ -161,16 +164,20 @@ suggestions, listed under Limitations).
   and educational use; publishing the app to an app store requires a paid
   supporter (production) key. If you plan store distribution, obtain a key
   from TheMealDB and replace the `1` path segment in `MealApi` accordingly.
-- Network requests have 5-second connect/read timeouts. Connection
-  failures, non-2xx responses, empty bodies, and malformed JSON are handled
-  with user-facing messages instead of crashes; recipe search is the only
-  part of the app that requires network access.
+- Recipe API requests and remote image loads all run on bounded
+  background pools with explicit 5-second connect and read timeouts.
+  Connection failures, non-2xx responses, empty bodies, and malformed
+  JSON are handled with user-facing messages instead of crashes, and a
+  recipe with an unreachable image still opens (a placeholder is shown).
+  Beyond importing new recipes, the only other network dependency is
+  fetching imported recipes' thumbnails from the MealDB image host when
+  they are displayed; everything else works offline.
 
 ## Data storage and privacy
 
 - All user data — inventory items, quantities, expiry dates, custom and
   imported recipes, shopping-list entries — is stored in a local Room
-  database (`RecipeApp`, schema version 6) in the app's private internal
+  database (`RecipeApp`, schema version 7) in the app's private internal
   storage on the device. The data is not encrypted at rest and is not
   synced to any account or server.
 - Recipe images chosen for custom recipes are copied into the app's
@@ -189,16 +196,21 @@ suggestions, listed under Limitations).
 
 - **Unit tests** (`app/src/test/java/com/example/fyp/`): the recommendation
   ranking algorithm (`RecipeAlgorithmTest`, 20 tests), MealDB response
-  parsing with offline fixtures (`MealApiTest`, 10 tests), and the Room
+  parsing with offline fixtures (`MealApiTest`, 10 tests), the remote-image
+  fetch boundary (`RemoteImageLoaderTest`, 5 tests), and the Room
   ingredient-identity converters (`ConvertersIngredientIdentityTest`,
   7 tests). Run with `./gradlew --no-daemon test`.
 - **Instrumented tests** (`app/src/androidTest/java/com/example/fyp/`):
-  Room persistence and expiry-consistency behaviour, the schema 5→6
-  migration against a real legacy database, and Espresso end-to-end tests
-  of the core flows (cook-and-decrement, unit removal with shared expiry
-  dates, shopping-list purchase round trip, editing a recipe with a remote
-  image). Run with `./gradlew --no-daemon connectedDebugAndroidTest` on a
-  connected emulator or device.
+  Room persistence, expiry-consistency, and concurrent-import deduplication
+  behaviour; the schema 5→6 and 6→7 migrations against real legacy
+  databases (data preservation, duplicate reconciliation, and a full
+  chained 5→7 Room open); and Espresso end-to-end tests of the core flows
+  (cook-and-decrement, unit removal with shared expiry dates,
+  shopping-list purchase round trip, editing a recipe with a remote image,
+  invalid and cancelled edits preserving the original, unreachable-image
+  and mid-request-teardown lifecycle cases). Run with
+  `./gradlew --no-daemon connectedDebugAndroidTest` on a connected
+  emulator or device.
 
 ## Current limitations
 
@@ -210,6 +222,9 @@ suggestions, listed under Limitations).
   which would require inset handling across the legacy XML screens; that
   work is intentionally deferred. Android 13/14 behaviour changes do not
   affect this app (no notifications, services, receivers, or PendingIntents).
+- **Recipe thumbnails are not cached:** imported recipes re-fetch their image
+  from the MealDB image host each time the list renders, bounded to two
+  background loader threads with 5-second timeouts.
 - **Recommendations are deterministic**, not machine-learned: score-based
   ranking over owned quantities and expiry urgency only. Recipes without
   ingredient requirements are excluded from ranked results; ingredients with
