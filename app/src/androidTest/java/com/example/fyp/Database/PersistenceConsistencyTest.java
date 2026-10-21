@@ -1,6 +1,7 @@
 package com.example.fyp.Database;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -23,7 +24,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * On-device regression tests for the schema-6 persistence repairs:
@@ -221,5 +227,92 @@ public class PersistenceConsistencyTest {
 
         assertNotNull(db.mainDao().findRecipeIdByMealId("52772"));
         assertNull(db.mainDao().findRecipeIdByMealId("99999"));
+    }
+
+    // ── §6: unique meal_id makes import deduplication atomic ───────────
+
+    @Test
+    public void secondImportOfSameMealIdIsRejectedWithoutDuplicates() {
+        Recipe first = new Recipe("Soup", "boil@", "img1");
+        first.setMealId("52772");
+        long id = db.mainDao().insertRecipeWithIngredients(first,
+                Arrays.asList(
+                        new RecipeIngredients(0, new Ingredients("TOMATO"), 1),
+                        new RecipeIngredients(0, new Ingredients("SALT"), 1)));
+        assertTrue(id > 0);
+
+        Recipe again = new Recipe("Soup", "boil@", "img1");
+        again.setMealId("52772");
+        long rejected = db.mainDao().insertRecipeWithIngredients(again,
+                Collections.singletonList(
+                        new RecipeIngredients(0, new Ingredients("BELL PEPPER"), 1)));
+
+        assertEquals("IGNORE conflict reports -1", -1, rejected);
+        assertEquals(1, db.mainDao().getAllRecipes().size());
+        List<RecipeIngredients> surviving = db.mainDao()
+                .getRecipeWithIngredientsByName("Soup").get(0)
+                .getRecipeIngredients();
+        assertEquals("survivor keeps exactly its own rows", 2, surviving.size());
+        for (RecipeIngredients row : surviving) {
+            assertFalse("rejected import attached nothing",
+                    row.getIngredients().getName().equals("BELL PEPPER"));
+        }
+    }
+
+    @Test
+    public void concurrentImportsOfOneMealKeepExactlyOneRecipe() throws Exception {
+        final CountDownLatch start = new CountDownLatch(1);
+        final CountDownLatch done = new CountDownLatch(2);
+        final AtomicInteger accepted = new AtomicInteger();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            new Thread(() -> {
+                Recipe recipe = new Recipe("Pie", "bake@", "img");
+                recipe.setMealId("52999");
+                try {
+                    start.await();
+                    long id = db.mainDao().insertRecipeWithIngredients(recipe,
+                            Collections.singletonList(new RecipeIngredients(
+                                    0, new Ingredients("APPLE"), 1)));
+                    if (id != -1) {
+                        accepted.incrementAndGet();
+                    }
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            }).start();
+        }
+        start.countDown();
+        assertTrue("imports did not finish", done.await(10, TimeUnit.SECONDS));
+
+        assertEquals("unique index admits exactly one import", 1, accepted.get());
+        assertEquals(1, db.mainDao().getAllRecipes().size());
+        assertEquals("survivor keeps its own ingredient row", 1, db.mainDao()
+                .getRecipeWithIngredientsByName("Pie").get(0)
+                .getRecipeIngredients().size());
+    }
+
+    @Test
+    public void differentMealsAndCustomNullIdsImportFreely() {
+        Recipe mealA = new Recipe("A", "x@", "");
+        mealA.setMealId("111");
+        Recipe mealB = new Recipe("B", "y@", "");
+        mealB.setMealId("222");
+        assertTrue(db.mainDao().insertRecipeWithIngredients(mealA,
+                Collections.singletonList(new RecipeIngredients(
+                        0, new Ingredients("RICE"), 1))) > 0);
+        assertTrue(db.mainDao().insertRecipeWithIngredients(mealB,
+                Collections.emptyList()) > 0);
+
+        // Custom recipes have no external id at all; NULL meal ids must
+        // never collide with the unique index.
+        for (int i = 0; i < 3; i++) {
+            Recipe custom = new Recipe("Family Dish " + i, "step@", "");
+            assertTrue(db.mainDao().insertRecipeWithIngredients(custom,
+                    Collections.emptyList()) > 0);
+        }
+
+        assertEquals(5, db.mainDao().getAllRecipes().size());
     }
 }

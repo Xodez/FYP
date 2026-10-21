@@ -87,6 +87,15 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
     private final List<RecipeWithIngredients> recipeWithIngredients2 = new ArrayList<>();
     private final RecipeAlgorithm ra = new RecipeAlgorithm();
     private String currentSort = "By Recommended";
+
+    /** Single daemon worker serialising all recipe-import searches. */
+    private static final java.util.concurrent.ExecutorService IMPORT_EXECUTOR =
+            java.util.concurrent.Executors.newSingleThreadExecutor(
+                    runnable -> {
+                        Thread thread = new Thread(runnable, "meal-import");
+                        thread.setDaemon(true);
+                        return thread;
+                    });
     private final List<Recipe> filteredRecipes = new ArrayList<>();
     private final List<InventoryWithExpiryDates> expiryDates = new ArrayList<>();
 
@@ -608,17 +617,21 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         Recipe recipe = new Recipe(meal.getStrMeal(),
                 MealApi.instructionsFrom(meal), MealApi.imageFrom(meal));
         recipe.setMealId(mealId);
-        long recipeId = database.mainDao().insertRecipe(recipe);
+
+        List<RecipeIngredients> rows = new ArrayList<>();
         for (String name : MealApi.ingredientNames(meal)) {
-            Ingredients ingredient = new Ingredients(IngredientNames.normalize(name));
-            database.mainDao().insertIngredient(ingredient);
             // One unit per ingredient: MealDB measure strings ("200g",
             // "to taste") do not map onto discrete inventory units, and
             // inventing random counts was worse than an honest fallback.
-            database.mainDao().insertRecipeIngredient(
-                    new RecipeIngredients((int) recipeId, ingredient, 1));
+            rows.add(new RecipeIngredients(0,
+                    new Ingredients(IngredientNames.normalize(name)), 1));
         }
-        return true;
+        // Recipe plus ingredient rows commit in one transaction against
+        // the unique meal_id index: a racing import from an overlapping
+        // search is rejected with -1, so ingredients can never attach to
+        // a losing duplicate or the wrong recipe id.
+        return database.mainDao()
+                .insertRecipeWithIngredients(recipe, rows) != -1;
     }
 
     private void searchRecipe(String rawQuery) {
@@ -628,9 +641,10 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             return;
         }
         final String ingredient = query.toLowerCase(Locale.ROOT).replace(" ", "_");
-        // One bounded background thread imports results sequentially;
-        // previously every result spawned its own thread and DB write.
-        new Thread(() -> {
+        // Searches queue on one shared import worker: results import
+        // sequentially and overlapping searches serialise, so existence
+        // checks never interleave and threads stay bounded.
+        IMPORT_EXECUTOR.execute(() -> {
             List<String> mealIds = MealApi.parseMealIds(
                     MealApi.get("filter.php?i=" + ingredient));
             if (mealIds == null) {
@@ -658,7 +672,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                     makeToast("Imported " + count + " recipe(s)");
                 }
             });
-        }).start();
+        });
     }
 
     /**

@@ -177,7 +177,7 @@ public class Migration5To6Test {
 
         RoomDB database = Room.databaseBuilder(context, RoomDB.class, DB_NAME)
                 .allowMainThreadQueries()
-                .addMigrations(RoomDB.MIGRATION_5_6)
+                .addMigrations(RoomDB.MIGRATION_5_6, RoomDB.MIGRATION_6_7)
                 .build();
         try {
             List<InventoryWithExpiryDates> inventories =

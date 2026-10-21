@@ -1,5 +1,6 @@
 package com.example.fyp.Database;
 
+import static androidx.room.OnConflictStrategy.IGNORE;
 import static androidx.room.OnConflictStrategy.REPLACE;
 
 import androidx.room.Dao;
@@ -173,7 +174,13 @@ public interface MainDAO {
     }
 
     //Recipe
-    @Insert(onConflict = REPLACE)
+    /**
+     * IGNORE, not REPLACE: a duplicate meal_id (a racing import from an
+     * overlapping search) is skipped and reported as -1 instead of
+     * replacing - let alone deleting and reinserting - the row and
+     * orphaning its ingredient relations.
+     */
+    @Insert(onConflict = IGNORE)
     long insertRecipe(Recipe recipe);
 
     @Update
