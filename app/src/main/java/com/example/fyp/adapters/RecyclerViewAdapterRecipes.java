@@ -1,10 +1,8 @@
 package com.example.fyp.adapters;
 
 import android.app.Activity;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.Drawable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,11 +14,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.fyp.Models.Recipe;
 import com.example.fyp.R;
+import com.example.fyp.RemoteImageLoader;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,32 +40,50 @@ public class RecyclerViewAdapterRecipes extends RecyclerView.Adapter<RecyclerVie
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        if(recipes.get(position).getImage().startsWith("http://") || recipes.get(position).getImage().startsWith("https://")){
-            new Thread(() -> {
-                InputStream in;
-                Drawable d = null;
-                try {
-                    in = (InputStream) new URL(recipes.get(position).getImage()).getContent();
-                    d = Drawable.createFromStream(in, "src image");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                Drawable finalD = d;
-                activity.runOnUiThread(() -> {
-                    if (finalD != null) {
-                        holder.image.setImageDrawable(finalD);
-                    }
-                    else{
-                        holder.image.setImageResource(R.drawable.ic_launcher_foreground);
-                    }
-                });
-            }).start();
-        }
-        else {
-            holder.image.setImageBitmap(BitmapFactory.decodeFile(recipes.get(position).getImage()));
+        String image = recipes.get(position).getImage();
+        if (image != null && (image.startsWith("http://") || image.startsWith("https://"))) {
+            // Tag the view with the url it is waiting for; when the holder
+            // is recycled for another recipe the tag changes and the
+            // obsolete result is dropped instead of showing the wrong
+            // picture. Fetching happens on the shared bounded loader pool
+            // with explicit connect/read timeouts (no raw per-bind thread).
+            holder.image.setTag(image);
+            RemoteImageLoader.fetchAsync(image, bytes ->
+                    postToUi(() -> applyLoadedImage(holder, image, bytes)));
+        } else {
+            holder.image.setTag(null);
+            holder.image.setImageBitmap(image == null
+                    ? null : BitmapFactory.decodeFile(image));
         }
         holder.name.setText(recipes.get(position).getName());
+    }
 
+    private void applyLoadedImage(ViewHolder holder, String url, byte[] bytes) {
+        if (!url.equals(holder.image.getTag())) {
+            return; // holder recycled for a different recipe
+        }
+        Bitmap bitmap = bytes == null ? null
+                : BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+        if (bitmap != null) {
+            holder.image.setImageBitmap(bitmap);
+        } else {
+            holder.image.setImageResource(R.drawable.ic_launcher_foreground);
+        }
+    }
+
+    /**
+     * Applies UI work only while the hosting activity can still take it;
+     * results arriving after teardown are discarded without crashing.
+     */
+    private void postToUi(Runnable update) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            if (!activity.isFinishing() && !activity.isDestroyed()) {
+                update.run();
+            }
+        });
     }
 
     @Override

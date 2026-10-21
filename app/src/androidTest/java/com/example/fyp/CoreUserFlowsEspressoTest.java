@@ -274,6 +274,64 @@ public class CoreUserFlowsEspressoTest {
                 }));
     }
 
+
+    /**
+     * A recipe whose remote image is unreachable must still open its
+     * dialog: images are optional and the shared loader reports failure
+     * as null (port 9 on loopback refuses instantly; no live network).
+     */
+    @Test
+    public void unreachableRemoteImageStillOpensRecipeDialog() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            MainDAO dao = RoomDB.getInstance(
+                    ApplicationProvider.getApplicationContext()).mainDao();
+            Recipe soup = new Recipe("NoNet Soup", "boil@",
+                    "http://127.0.0.1:9/soup.jpg");
+            long id = dao.insertRecipe(soup);
+            dao.insertRecipeIngredient(new RecipeIngredients(
+                    (int) id, new Ingredients("CARROT"), 1));
+        });
+        launch();
+
+        selectTab("RECIPES");
+        onView(allOf(withId(R.id.name), withText("NoNet Soup"))).perform(click());
+        onView(withId(R.id.select)).perform(click());
+        onView(withId(R.id.ingredientList)).check(matches(isDisplayed()));
+    }
+
+    /**
+     * Destroying the view while a remote image request is still in
+     * flight must not crash: the guarded post drops callbacks once the
+     * fragment detaches. An unroutable loopback-range address keeps the
+     * connect pending until its timeout, so the screen is closed mid
+     * request; a surviving re-launch proves no uncaught exception
+     * escaped (which would have killed the process).
+     */
+    @Test
+    public void closingScreenDuringPendingImageLoadDoesNotCrash() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            MainDAO dao = RoomDB.getInstance(
+                    ApplicationProvider.getApplicationContext()).mainDao();
+            Recipe slow = new Recipe("Slow Pic", "simmer@",
+                    "http://10.255.255.1/slow.jpg");
+            long id = dao.insertRecipe(slow);
+            dao.insertRecipeIngredient(new RecipeIngredients(
+                    (int) id, new Ingredients("CELERY"), 1));
+        });
+        launch();
+
+        selectTab("RECIPES");
+        onView(allOf(withId(R.id.name), withText("Slow Pic"))).perform(click());
+        onView(withId(R.id.select)).perform(click());
+        pause(300); // image connect is now pending
+        scenario.close();
+        scenario = null;
+
+        launch();
+        selectTab("RECIPES");
+        onView(visible(withId(R.id.addRecipe))).check(matches(isDisplayed()));
+    }
+
     // ── Flow: missing ingredients -> shopping list -> purchase ──────────
 
     @Test

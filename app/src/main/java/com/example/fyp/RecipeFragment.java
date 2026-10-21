@@ -50,9 +50,7 @@ import com.example.fyp.adapters.RecyclerViewAdapterRecipes;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -191,29 +189,12 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             recipeImage = dialog.findViewById(R.id.recipeImage);
 
             enterName.setText(recipeWithIngredients.getRecipe().getName());
-            if(recipeWithIngredients.getRecipe().getImage().startsWith("http://") || recipeWithIngredients.getRecipe().getImage().startsWith("https://")){
-                new Thread(() -> {
-                    InputStream in;
-                    Drawable d = null;
-                    try {
-                        in = (InputStream) new URL(recipeWithIngredients.getRecipe().getImage()).getContent();
-                        d = Drawable.createFromStream(in, "src image");
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    Drawable finalD = d;
-                    requireActivity().runOnUiThread(() -> {
-                        if (finalD != null) {
-                            recipeImage.setImageDrawable(finalD);
-                        }
-                        else{
-                            recipeImage.setImageResource(R.drawable.ic_launcher_foreground);
-                        }
-                    });
-                }).start();
-            }
-            else {
-                recipeImage.setImageBitmap(BitmapFactory.decodeFile(recipeWithIngredients.getRecipe().getImage()));
+            String selectedImage = recipeWithIngredients.getRecipe().getImage();
+            if (isRemoteUrl(selectedImage)) {
+                loadIntoDialogImage(dialog, recipeImage, selectedImage);
+            } else {
+                recipeImage.setImageBitmap(selectedImage == null
+                        ? null : BitmapFactory.decodeFile(selectedImage));
             }
 
             LinearLayoutManager layoutManager = new LinearLayoutManager(dialog.getContext(), LinearLayoutManager.VERTICAL, false);
@@ -331,23 +312,8 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
 
             enterName.setText(recipeWithIngredients.getRecipe().getName());
             String currentImage = recipeWithIngredients.getRecipe().getImage();
-            if (currentImage != null
-                    && (currentImage.startsWith("http://")
-                    || currentImage.startsWith("https://"))) {
-                new Thread(() -> {
-                    Drawable d = null;
-                    try (InputStream in = (InputStream) new URL(currentImage).getContent()) {
-                        d = Drawable.createFromStream(in, "src image");
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    Drawable finalD = d;
-                    requireActivity().runOnUiThread(() -> {
-                        if (finalD != null && dialog.isShowing()) {
-                            recipeImage.setImageDrawable(finalD);
-                        }
-                    });
-                }).start();
+            if (isRemoteUrl(currentImage)) {
+                loadIntoDialogImage(dialog, recipeImage, currentImage);
             } else {
                 recipeImage.setImageBitmap(currentImage == null
                         ? null : BitmapFactory.decodeFile(currentImage));
@@ -668,13 +634,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             List<String> mealIds = MealApi.parseMealIds(
                     MealApi.get("filter.php?i=" + ingredient));
             if (mealIds == null) {
-                requireActivity().runOnUiThread(
-                        () -> makeToast("Recipe search failed. Check your connection."));
+                postToUiIfAttached(() -> makeToast(
+                        "Recipe search failed. Check your connection."));
                 return;
             }
             if (mealIds.isEmpty()) {
-                requireActivity().runOnUiThread(
-                        () -> makeToast("No recipes found with that ingredient"));
+                postToUiIfAttached(() -> makeToast(
+                        "No recipes found with that ingredient"));
                 return;
             }
             int importedCount = 0;
@@ -684,7 +650,7 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 }
             }
             final int count = importedCount;
-            requireActivity().runOnUiThread(() -> {
+            postToUiIfAttached(() -> {
                 refreshRecipeList();
                 if (count == 0) {
                     makeToast("Recipes already imported");
@@ -693,6 +659,46 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
                 }
             });
         }).start();
+    }
+
+    /**
+     * Posts UI work from background threads, dropping it once the
+     * fragment is detached: bare requireActivity() calls from plain
+     * threads threw IllegalStateException after the user navigated away,
+     * and the uncaught exception terminated the app.
+     */
+    private void postToUiIfAttached(Runnable update) {
+        if (!isAdded()) {
+            return;
+        }
+        requireActivity().runOnUiThread(() -> {
+            if (isAdded()) {
+                update.run();
+            }
+        });
+    }
+
+    /**
+     * Fetches a dialog's remote image on the shared bounded loader pool
+     * (with connect/read timeouts) and applies the result only while
+     * this exact dialog is still the fragment's current one; obsolete
+     * results from earlier dialogs are discarded. A failed image fetch
+     * shows the placeholder and never blocks the dialog.
+     */
+    private void loadIntoDialogImage(Dialog target, ImageView targetView,
+                                     String url) {
+        RemoteImageLoader.fetchAsync(url, bytes -> postToUiIfAttached(() -> {
+            if (dialog != target || !target.isShowing()) {
+                return;
+            }
+            Bitmap bitmap = bytes == null ? null
+                    : BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (bitmap != null) {
+                targetView.setImageBitmap(bitmap);
+            } else {
+                targetView.setImageResource(R.drawable.ic_launcher_foreground);
+            }
+        }));
     }
 
     Toast t;
