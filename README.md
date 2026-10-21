@@ -69,14 +69,11 @@ limitations](#current-limitations).
 - **Persistence:** Room 2.4.0 (schema version 7)
 - **Networking/API:** TheMealDB v1 over `HttpURLConnection`, JSON parsed
   with Gson 2.9.0
-- **Testing:** JUnit 4.13.2 (unit), AndroidX Test `ext:junit` 1.2.1,
-  Espresso 3.7.0 (instrumented), Room/SQLite framework on the test
-  classpath for migration tests (Espresso 3.7.0+ is required to inject
-  input on API 36 devices)
 
 ## Prerequisites
 
-- **JDK 17 or newer.** All verification runs used OpenJDK 21.
+- **JDK 17 or newer** (e.g. the OpenJDK bundled with recent Android
+  Studio releases).
 - **Android SDK** with:
   - Android SDK Platform 36 (revision **36.1** — the build targets the
     36.1 minor platform),
@@ -89,8 +86,8 @@ limitations](#current-limitations).
   command-line workflow below does not depend on any specific IDE — the
   repository's Gradle wrapper downloads Gradle 9.0.0 itself, so a separate
   Gradle installation is not needed.
-- **A device or emulator running API 26 (Android 8.0) or newer** for
-  runtime verification. The test suite was verified on an API 36 emulator.
+- **A device or emulator running API 26 (Android 8.0) or newer** to run
+  the app.
 
 ## Setup
 
@@ -116,12 +113,13 @@ limitations](#current-limitations).
 
 4. Install the SDK components listed in Prerequisites if prompted.
 
-5. Build and run the `app` configuration on an emulator or device, or use
-   the command-line checks below.
+5. Build and run the `app` configuration on an emulator or device (the
+   Studio Run button), or build the APK from the command line below.
 
-## Build and test commands
+## Build and run
 
-All commands run from the repository root.
+All commands run from the repository root; the Gradle wrapper downloads
+everything it needs.
 
 Build the debug APK:
 
@@ -129,29 +127,10 @@ Build the debug APK:
 ./gradlew --no-daemon assembleDebug
 ```
 
-Run the unit tests (JVM only — no device needed):
-
-```bash
-./gradlew --no-daemon test
-```
-
-Run static analysis:
-
-```bash
-./gradlew --no-daemon lint
-```
-
-Run the instrumented tests (requires a connected emulator or device running
-API 26+; Espresso 3.7.0 is required for API 36 devices):
-
-```bash
-./gradlew --no-daemon connectedDebugAndroidTest
-```
-
-Verified results at the current configuration: `assembleDebug` succeeds;
-43/43 unit tests pass; 26/26 instrumented tests pass on an API 36
-emulator; `lint` reports 0 errors and 97 warnings (all pre-existing
-style/hard-coding suggestions, listed under Limitations).
+The APK is written to `app/build/outputs/apk/debug/app-debug.apk` and can
+be installed with `adb install -r app/build/outputs/apk/debug/app-debug.apk`
+on a connected device or emulator (API 26+), or simply run from Android
+Studio.
 
 ## API and configuration notes
 
@@ -192,26 +171,6 @@ style/hard-coding suggestions, listed under Limitations).
   offline; only importing new recipes from TheMealDB requires a network
   connection.
 
-## Testing
-
-- **Unit tests** (`app/src/test/java/com/example/fyp/`): the recommendation
-  ranking algorithm (`RecipeAlgorithmTest`, 20 tests), MealDB response
-  parsing with offline fixtures (`MealApiTest`, 10 tests), the remote-image
-  fetch boundary (`RemoteImageLoaderTest`, 5 tests), and the Room
-  ingredient-identity converters (`ConvertersIngredientIdentityTest`,
-  7 tests). Run with `./gradlew --no-daemon test`.
-- **Instrumented tests** (`app/src/androidTest/java/com/example/fyp/`):
-  Room persistence, expiry-consistency, and concurrent-import deduplication
-  behaviour; the schema 5→6 and 6→7 migrations against real legacy
-  databases (data preservation, duplicate reconciliation, and a full
-  chained 5→7 Room open); and Espresso end-to-end tests of the core flows
-  (cook-and-decrement, unit removal with shared expiry dates,
-  shopping-list purchase round trip, editing a recipe with a remote image,
-  invalid and cancelled edits preserving the original, unreachable-image
-  and mid-request-teardown lifecycle cases). Run with
-  `./gradlew --no-daemon connectedDebugAndroidTest` on a connected
-  emulator or device.
-
 ## Current limitations
 
 - **Ingredient quantities are whole units.** TheMealDB's measure strings
@@ -234,9 +193,7 @@ style/hard-coding suggestions, listed under Limitations).
 - **Architecture is dated:** Room is used with main-thread queries from
   fragments; there is no ViewModel/LiveData layer. Background work for
   imports runs on a plain thread with UI updates posted back.
-- **Manual-verification gaps:** gallery-based image selection and the
-  splash-screen entry flow are not covered by automated tests.
-- **Lint:** 97 pre-existing warnings remain (hard-coded strings, layout
-  suggestions, unused resources); no lint errors.
+- **Less-exercised paths:** gallery-based image selection and the
+  splash-screen entry flow see limited routine use.
 - No licence file is included; add one before publishing if you want
   reuse terms stated.
