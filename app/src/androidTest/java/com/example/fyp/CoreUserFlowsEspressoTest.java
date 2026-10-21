@@ -4,6 +4,7 @@ import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
 import static androidx.test.espresso.action.ViewActions.closeSoftKeyboard;
 import static androidx.test.espresso.action.ViewActions.scrollTo;
+import static androidx.test.espresso.action.ViewActions.replaceText;
 import static androidx.test.espresso.action.ViewActions.typeText;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -189,6 +190,88 @@ public class CoreUserFlowsEspressoTest {
         Assert.assertEquals("tomato expiry gone", 0,
                 query((dao, out) ->
                         out.set(dao.getExpiryDatesForIngredient("TOMATO").size())));
+    }
+
+
+    /**
+     * An invalid edit (blank name) must be rejected BEFORE anything is
+     * written: the historic flow deleted the original recipe first, so a
+     * failed validation lost the recipe. Covers acceptance cases 2, 3, 5.
+     */
+    @Test
+    public void invalidEditLeavesOriginalRecipeIntact() {
+        launch();
+        createCustomRecipe("KeepMe", "tomato", "basil");
+
+        onView(allOf(withId(R.id.name), withText("KeepMe"))).perform(click());
+        onView(withId(R.id.edit)).perform(click());
+        onView(withId(R.id.enterName)).perform(replaceText("   "),
+                closeSoftKeyboard());
+        onView(withId(R.id.done)).perform(scrollTo(), click());
+        pause(600);
+
+        // Validation rejected the save: the editor stays open...
+        onView(withId(R.id.enterName)).check(matches(isDisplayed()));
+        // ...and the stored recipe with its two ingredient rows is intact.
+        Assert.assertEquals("original recipe still stored", 1,
+                query((dao, out) -> out.set(
+                        dao.getRecipeWithIngredientsByName("KeepMe").size())));
+        Assert.assertEquals("ingredient rows unchanged", 2,
+                query((dao, out) -> out.set(
+                        dao.getRecipeWithIngredientsByName("KeepMe").get(0)
+                                .getRecipeIngredients().size())));
+
+        // Cancelling after the failed validation changes nothing either.
+        onView(withId(R.id.cancel)).perform(scrollTo(), click());
+        pause(600);
+        Assert.assertEquals("still stored after cancel", 1,
+                query((dao, out) -> out.set(
+                        dao.getRecipeWithIngredientsByName("KeepMe").size())));
+        Assert.assertEquals("nothing saved under a blank name", 0,
+                query((dao, out) -> out.set(dao.getAllRecipes().size() == 1 ? 0 : 1)));
+    }
+
+    /**
+     * Cancelling an edit after typing new values must leave the stored
+     * recipe, its image, and its external meal id untouched (acceptance
+     * case 4).
+     */
+    @Test
+    public void cancellingEditKeepsStoredRecipeUntouched() {
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            MainDAO dao = RoomDB.getInstance(
+                    ApplicationProvider.getApplicationContext()).mainDao();
+            Recipe tart = new Recipe("Tart", "fill@ bake@",
+                    "https://example.invalid/t.jpg");
+            tart.setMealId("52999");
+            long id = dao.insertRecipe(tart);
+            dao.insertRecipeIngredient(new RecipeIngredients(
+                    (int) id, new Ingredients("APPLE"), 2));
+        });
+        launch();
+
+        selectTab("RECIPES");
+        onView(allOf(withId(R.id.name), withText("Tart"))).perform(click());
+        onView(withId(R.id.edit)).perform(click());
+        onView(withId(R.id.enterName)).perform(replaceText("Renamed"),
+                closeSoftKeyboard());
+        onView(withId(R.id.cancel)).perform(scrollTo(), click());
+        pause(600);
+
+        Assert.assertEquals("original still stored under old name", 1,
+                query((dao, out) -> out.set(
+                        dao.getRecipeWithIngredientsByName("Tart").size())));
+        Assert.assertEquals("nothing saved under the typed new name", 0,
+                query((dao, out) -> out.set(
+                        dao.getRecipeWithIngredientsByName("Renamed").size())));
+        Assert.assertEquals("meal id and URL image intact", 1,
+                query((dao, out) -> {
+                    java.util.List<Recipe> recipes = dao.getAllRecipes();
+                    out.set(recipes.size() == 1
+                            && "52999".equals(recipes.get(0).getMealId())
+                            && recipes.get(0).getImage().startsWith("https://")
+                            ? 1 : 0);
+                }));
     }
 
     // ── Flow: missing ingredients -> shopping list -> purchase ──────────

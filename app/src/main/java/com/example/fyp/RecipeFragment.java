@@ -368,35 +368,13 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             addIngredient.setOnClickListener(view -> addIngredient());
             uploadImage.setOnClickListener(view -> openGallery());
             addInstruction.setOnClickListener(view -> addInstruction());
-            done.setOnClickListener(view -> {
-                replaceEditedRecipe();
-                addRecipe();
-            });
+            done.setOnClickListener(view -> addRecipe());
             cancel.setOnClickListener(view -> dialog.cancel());
 
             dialog.show();
         } else {
             makeToast("No recipe selected");
         }
-    }
-
-    /**
-     * Removes the stored row for the recipe being edited without touching
-     * its app-private image file, which the re-created recipe may still
-     * reference when the user did not pick a replacement image.
-     */
-    private void replaceEditedRecipe() {
-        if (editingRecipe == null) {
-            return;
-        }
-        database.mainDao().deleteRecipeWithIngredients(editingRecipe);
-        if (imageReplaced && existingImage != null
-                && !existingImage.startsWith("http://")
-                && !existingImage.startsWith("https://")) {
-            new File(existingImage).delete();
-        }
-        refreshRecipeList();
-        recipePosition = -1;
     }
 
     private void deleteRecipe() {
@@ -458,6 +436,16 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
         dialog.show();
     }
 
+    /**
+     * Saves the editor contents, for both new and edited recipes.
+     *
+     * Validation happens before anything is written, and an edit updates
+     * the stored recipe in place inside one transaction: an invalid or
+     * cancelled edit can no longer leave the original recipe deleted.
+     * The external meal id and the existing image are preserved whenever
+     * the user did not replace them; a superseded app-private image file
+     * is removed only after the database change has committed.
+     */
     private void addRecipe() {
         String recipeName = enterName.getText().toString().trim();
         if (recipeName.isEmpty()) {
@@ -481,19 +469,37 @@ public class RecipeFragment extends Fragment implements RecyclerViewAdapterRecip
             }
 
         }
-        Recipe temp = new Recipe(recipeName, instructions.toString(), imagePath);
-        temp.setMealId(existingMealId);
+        Recipe recipe = new Recipe(recipeName, instructions.toString(), imagePath);
+        recipe.setMealId(existingMealId);
 
-        long recipeId = database.mainDao().insertRecipe(temp);
+        List<RecipeIngredients> rows = new ArrayList<>();
         for (int i = 0; i < ingredientList.size(); i++) {
-            Ingredients ingredient = new Ingredients(ingredientList.get(i));
-            database.mainDao().insertIngredient(ingredient);
+            rows.add(new RecipeIngredients(0,
+                    new Ingredients(ingredientList.get(i)), count.get(i)));
+        }
 
-            RecipeIngredients recipeIngredients = new RecipeIngredients((int) recipeId, ingredient, count.get(i));
-            database.mainDao().insertRecipeIngredient(recipeIngredients);
+        String supersededImage = null;
+        if (editingRecipe != null) {
+            recipe.setID(editingRecipe.getID());
+            database.mainDao().updateRecipeWithIngredients(recipe, rows);
+            if (imageReplaced && existingImage != null
+                    && !existingImage.isEmpty() && !isRemoteUrl(existingImage)) {
+                supersededImage = existingImage;
+            }
+            editingRecipe = null;
+        } else {
+            database.mainDao().insertRecipeWithIngredients(recipe, rows);
+        }
+        if (supersededImage != null) {
+            new File(supersededImage).delete();
         }
         refreshRecipeList();
         dialog.dismiss();
+    }
+
+    private static boolean isRemoteUrl(String image) {
+        return image != null && (image.startsWith("http://")
+                || image.startsWith("https://"));
     }
 
     /**

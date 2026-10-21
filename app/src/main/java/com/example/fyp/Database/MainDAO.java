@@ -7,6 +7,7 @@ import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Transaction;
+import androidx.room.Update;
 
 import com.example.fyp.Models.ExpiryDate;
 import com.example.fyp.Models.Ingredients;
@@ -174,6 +175,47 @@ public interface MainDAO {
     //Recipe
     @Insert(onConflict = REPLACE)
     long insertRecipe(Recipe recipe);
+
+    @Update
+    void updateRecipe(Recipe recipe);
+
+    /**
+     * Inserts a new recipe and its ingredient rows in a single
+     * transaction, so a mid-way failure can never leave a recipe without
+     * its ingredients (or ingredient rows without their recipe). Returns
+     * the new row id, or -1 when the insert was rejected.
+     */
+    @Transaction
+    default long insertRecipeWithIngredients(Recipe recipe,
+                                             java.util.List<RecipeIngredients> rows) {
+        long recipeId = insertRecipe(recipe);
+        if (recipeId <= 0) {
+            return -1;
+        }
+        for (RecipeIngredients row : rows) {
+            row.setRecipeID((int) recipeId);
+            insertIngredient(row.getIngredients());
+            insertRecipeIngredient(row);
+        }
+        return recipeId;
+    }
+
+    /**
+     * Rewrites an existing recipe and replaces its ingredient rows
+     * atomically, preserving the row id and everything that hangs off
+     * it (image path, external meal id). Used by safe edit-in-place.
+     */
+    @Transaction
+    default void updateRecipeWithIngredients(Recipe recipe,
+                                             java.util.List<RecipeIngredients> rows) {
+        updateRecipe(recipe);
+        deleteRecipeIngredientsOfRecipe(recipe.getID());
+        for (RecipeIngredients row : rows) {
+            row.setRecipeID(recipe.getID());
+            insertIngredient(row.getIngredients());
+            insertRecipeIngredient(row);
+        }
+    }
 
     @Query("SELECT * FROM RECIPE")
     List<Recipe> getAllRecipes();
